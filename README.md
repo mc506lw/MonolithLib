@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./readme-header.png" alt="MonolithLib Banner" width="100%">
+</p>
+
 <div align="center">
   <img src="https://img.shields.io/badge/Minecraft-1.21.11-green?style=for-the-badge&logo=minecraft" alt="Minecraft">
   <img src="https://img.shields.io/badge/Kotlin-1.9.0-purple?style=for-the-badge&logo=kotlin" alt="Kotlin">
