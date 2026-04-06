@@ -1,0 +1,273 @@
+package top.mc506lw.monolith.feature.builder
+
+import org.bukkit.Location
+import org.bukkit.Material
+import org.bukkit.Particle
+import org.bukkit.Sound
+import org.bukkit.block.data.BlockData
+import org.bukkit.entity.Player
+import org.bukkit.scheduler.BukkitRunnable
+import top.mc506lw.monolith.core.math.Vector3i
+import top.mc506lw.monolith.core.predicate.RotatedPredicate
+import top.mc506lw.monolith.core.structure.MonolithStructure
+import top.mc506lw.monolith.core.transform.BlockStateRotator
+import top.mc506lw.monolith.core.transform.CoordinateTransform
+import top.mc506lw.monolith.core.transform.Facing
+import top.mc506lw.rebar.MonolithLib
+
+class StructureBuilder(
+    private val player: Player,
+    private val structure: MonolithStructure,
+    private val controllerLocation: Location,
+    private val facing: Facing,
+    private val isSurvival: Boolean
+) {
+    private val transform = CoordinateTransform(facing)
+    private val rotationSteps = facing.rotationSteps
+    
+    private var isBuilding = false
+    private var buildTask: BukkitRunnable? = null
+    
+    val blocksToPlace: List<BuildEntry> by lazy {
+        val entries = mutableListOf<BuildEntry>()
+        
+        for (block in structure.flattenedBlocks) {
+            val worldPos = transform.toWorldPosition(
+                controllerPos = Vector3i(
+                    controllerLocation.blockX,
+                    controllerLocation.blockY,
+                    controllerLocation.blockZ
+                ),
+                relativePos = block.relativePosition,
+                centerOffset = structure.centerOffset
+            )
+            
+            val originalPreview = block.previewBlockData ?: Material.STONE.createBlockData()
+            val rotatedBlockData = BlockStateRotator.rotate(originalPreview, rotationSteps)
+            
+            val rotatedPredicate = RotatedPredicate(block.predicate, rotationSteps)
+            
+            entries.add(BuildEntry(
+                worldPos = worldPos,
+                blockData = rotatedBlockData,
+                material = rotatedBlockData.material,
+                predicate = rotatedPredicate
+            ))
+        }
+        
+        entries.sortedWith(compareBy<BuildEntry> { it.worldPos.y }.thenBy { it.worldPos.x }.thenBy { it.worldPos.z })
+    }
+    
+    fun canBuild(): BuildCheckResult {
+        val world = controllerLocation.world ?: return BuildCheckResult.WORLD_UNLOADED
+        
+        val materialCounts = mutableMapOf<Material, Int>()
+        val conflicts = mutableListOf<Vector3i>()
+        
+        for (entry in blocksToPlace) {
+            val block = world.getBlockAt(entry.worldPos.x, entry.worldPos.y, entry.worldPos.z)
+            
+            if (!block.type.isAir && block.type != entry.material) {
+                conflicts.add(entry.worldPos)
+            }
+            
+            if (isSurvival && block.type.isAir) {
+                materialCounts[entry.material] = (materialCounts[entry.material] ?: 0) + 1
+            }
+        }
+        
+        if (conflicts.isNotEmpty()) {
+            return BuildCheckResult.CONFLICTS(conflicts)
+        }
+        
+        if (!isSurvival) {
+            return BuildCheckResult.SUCCESS
+        }
+        
+        val inventory = player.inventory
+        val missing = mutableMapOf<Material, Int>()
+        
+        for ((material, required) in materialCounts) {
+            var remaining = required
+            
+            for (item in inventory.contents) {
+                if (item != null && item.type == material) {
+                    val take = minOf(item.amount, remaining)
+                    remaining -= take
+                    if (remaining <= 0) break
+                }
+            }
+            
+            if (remaining > 0) {
+                missing[material] = remaining
+            }
+        }
+        
+        return if (missing.isEmpty()) {
+            BuildCheckResult.SUCCESS
+        } else {
+            BuildCheckResult.MISSING_MATERIALS(missing)
+        }
+    }
+    
+    fun startBuild(): Boolean {
+        if (isBuilding) return false
+        
+        val checkResult = canBuild()
+        when (checkResult) {
+            is BuildCheckResult.WORLD_UNLOADED -> {
+                player.sendMessage("§c[MonolithLib] 世界未加载!")
+                return false
+            }
+            is BuildCheckResult.CONFLICTS -> {
+                player.sendMessage("§c[MonolithLib] 建造区域有冲突方块!")
+                player.sendMessage("§7冲突位置: ${checkResult.conflicts.take(5).joinToString { "(${it.x}, ${it.y}, ${it.z})" }}")
+                if (checkResult.conflicts.size > 5) {
+                    player.sendMessage("§7... 还有 ${checkResult.conflicts.size - 5} 个冲突位置")
+                }
+                return false
+            }
+            is BuildCheckResult.MISSING_MATERIALS -> {
+                val missing = checkResult.missing
+                player.sendMessage("§c[MonolithLib] 材料不足!")
+                missing.forEach { (material, count) ->
+                    player.sendMessage("  §7- ${material.name}: 缺少 $count 个")
+                }
+                return false
+            }
+            is BuildCheckResult.SUCCESS -> {
+                // Continue
+            }
+        }
+        
+        isBuilding = true
+        
+        buildTask = object : BukkitRunnable() {
+            private val iterator = blocksToPlace.iterator()
+            private var placed = 0
+            private val total = blocksToPlace.size
+            private var currentY = -999
+            
+            override fun run() {
+                if (!iterator.hasNext()) {
+                    finishBuild()
+                    cancel()
+                    return
+                }
+                
+                val world = controllerLocation.world
+                if (world == null) {
+                    player.sendMessage("§c[MonolithLib] 世界已卸载，建造取消")
+                    cancelBuild()
+                    return
+                }
+                
+                var builtThisTick = 0
+                val maxPerTick = 500
+                
+                while (iterator.hasNext() && builtThisTick < maxPerTick) {
+                    val entry = iterator.next()
+                    
+                    if (entry.worldPos.y != currentY) {
+                        currentY = entry.worldPos.y
+                    }
+                    
+                    val block = world.getBlockAt(entry.worldPos.x, entry.worldPos.y, entry.worldPos.z)
+                    
+                    if (block.type.isAir) {
+                        if (isSurvival) {
+                            consumeMaterial(entry.material)
+                        }
+                        
+                        block.blockData = entry.blockData
+                        
+                        if (builtThisTick < 10) {
+                            playBuildEffects(block.location)
+                        }
+                        
+                        placed++
+                        builtThisTick++
+                    }
+                }
+                
+                if (placed % 500 == 0 || placed == total) {
+                    val progress = (placed * 100 / total)
+                    player.sendMessage("§a[MonolithLib] 建造进度: $placed/$total ($progress%)")
+                }
+            }
+        }
+        
+        buildTask?.runTaskTimer(MonolithLib.instance, 1L, 1L)
+        
+        player.sendMessage("§a[MonolithLib] 开始建造: ${structure.id}")
+        player.sendMessage("§7总共 ${blocksToPlace.size} 个方块，每次建造 500 个")
+        
+        return true
+    }
+    
+    fun cancelBuild() {
+        buildTask?.cancel()
+        isBuilding = false
+        player.sendMessage("§e[MonolithLib] 建造已取消")
+    }
+    
+    private fun consumeMaterial(material: Material) {
+        val inventory = player.inventory
+        var remaining = 1
+        
+        for (i in 0 until inventory.size) {
+            val item = inventory.getItem(i) ?: continue
+            if (item.type != material) continue
+            
+            val take = minOf(item.amount, remaining)
+            item.amount -= take
+            remaining -= take
+            
+            if (item.amount <= 0) {
+                inventory.setItem(i, null)
+            }
+            
+            if (remaining <= 0) break
+        }
+    }
+    
+    private fun playBuildEffects(location: Location) {
+        val world = location.world ?: return
+        
+        world.spawnParticle(
+            Particle.BLOCK,
+            location.clone().add(0.5, 0.5, 0.5),
+            5,
+            0.2, 0.2, 0.2,
+            Material.STONE.createBlockData()
+        )
+    }
+    
+    private fun finishBuild() {
+        isBuilding = false
+        
+        player.sendMessage("§a[MonolithLib] 建造完成!")
+        player.sendMessage("§7结构: ${structure.id}")
+        
+        controllerLocation.world?.playSound(
+            controllerLocation,
+            Sound.ENTITY_PLAYER_LEVELUP,
+            1.0f,
+            1.0f
+        )
+    }
+    
+    data class BuildEntry(
+        val worldPos: Vector3i,
+        val blockData: BlockData,
+        val material: Material,
+        val predicate: top.mc506lw.monolith.core.predicate.Predicate
+    )
+    
+    sealed class BuildCheckResult {
+        object SUCCESS : BuildCheckResult()
+        object WORLD_UNLOADED : BuildCheckResult()
+        data class CONFLICTS(val conflicts: List<Vector3i>) : BuildCheckResult()
+        data class MISSING_MATERIALS(val missing: Map<Material, Int>) : BuildCheckResult()
+    }
+}

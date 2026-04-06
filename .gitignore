@@ -1,0 +1,12 @@
+
+.idea/
+.gradle
+.trae
+.vscode
+.kotlin
+
+build/
+
+**/build/
+
+!gradle-wrapper.jar

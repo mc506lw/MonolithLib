@@ -1,0 +1,170 @@
+addon: "MonolithLib"
+
+item:
+  test_controller:
+    name: "Test Controller"
+    lore: "A test controller block for structure testing"
+  furnace_core:
+    name: "Furnace Core"
+    lore: "A furnace core block for smelting structures"
+  machine_core:
+    name: "Machine Core"
+    lore: "A machine core block for complex machinery"
+  custom_controller:
+    name: "Custom Controller"
+    lore: "A universal controller for custom structures"
+
+message:
+  prefix: "<gold>[MonolithLib]</gold>"
+  prefix_test: "<gray>[MLTest]</gray>"
+  
+  permission_denied: "<red>Permission denied!</red>"
+  player_only: "<red>This command can only be executed by a player!</red>"
+  
+  preview:
+    started: "<green>Preview started: %structure_id% (%facing%)</green>"
+    stopped: "<green>Stopped %count% preview(s)</green>"
+    expired: "<yellow>Preview has expired</yellow>"
+    no_active: "<red>You have no active previews</red>"
+    layer_changed: "<green>Switched to layer: %layer%</green>"
+    layer_up: "<green>Switched to upper layer</green>"
+    layer_down: "<green>Switched to lower layer</green>"
+    layer_top: "<red>Already at the top layer</red>"
+    layer_bottom: "<red>Already at the bottom layer</red>"
+    layer_invalid: "<red>Invalid layer number: %layer%</red>"
+    layer_out_of_range: "<red>Layer out of range</red>"
+    current_layer: "<gray>Current layer: <white>%current%/%max%</white></gray>"
+    current_position: "<gray>Current position: <white>%x%, %y%, %z%</white></gray>"
+    use_layer_command: "<gray>Use /mltest layer up/down to switch layers</gray>"
+    progress: "<gray>Progress: <white>%correct%/%total%</white> <green>%completed%</green></gray>"
+    completed: "<green>Structure %structure_id% completed!</green>"
+    controller_broken: "<red>Controller block has been destroyed, preview cancelled</red>"
+    not_found: "<red>Structure not found: %structure_id%</red>"
+    start_preview: "<gray>Use /mltest preview <ID> to start a preview</gray>"
+    preview_will_expire: "<gray>Preview will disappear in 10 seconds</gray>"
+    preview_cancelled: "<green>Preview cancelled</green>"
+    preview_failed: "<red>Failed to create preview</red>"
+  
+  structure:
+    formed: "<green>Structure %structure_id% has been formed!</green>"
+    broken: "<red>Structure %structure_id% has been broken!</red>"
+    not_found: "<red>Structure not found: %structure_id%</red>"
+    no_blocks: "<yellow>Warning: This structure has no blocks defined!</yellow>"
+    add_blocks_hint: "<gray>Please add blocks section in YAML config</gray>"
+    controller_detected: "<green>Controller detected: %key%</green>"
+    associated_structure: "<gray>Associated structure: %structure_id%</gray>"
+    block_count: "<gray>Block count: %count%</gray>"
+    slots: "<gray>Slots: %slots%</gray>"
+    custom_data: "<gray>Custom data: %count% items</gray>"
+  
+  command:
+    help:
+      title: "<gold>[MonolithLib] Help:</gold>"
+      reload: "<gray>/ml reload</gray> <white>- Reload all structures</white>"
+      list: "<gray>/ml list</gray> <white>- List all registered structures</white>"
+      files: "<gray>/ml files</gray> <white>- List structure files</white>"
+      preview: "<gray>/ml preview</gray> <white>- Preview structure (point at controller)</white>"
+      construct: "<gray>/ml construct</gray> <white>- Quick build (point at controller)</white>"
+      info: "<gray>/ml info</gray> <white>- Show plugin info</white>"
+      usage: "<gray>Usage:</gray>"
+      step1: "<white>1. Point at a registered controller block</white>"
+      step2: "<white>2. Type /ml preview to preview</white>"
+      step3: "<white>3. Type /ml construct to build</white>"
+    
+    test_help:
+      title: "<gold>[MonolithLib Test] Test commands:</gold>"
+      list: "<gray>/mltest list</gray> <white>- List all structures</white>"
+      info: "<gray>/mltest info <ID></gray> <white>- View structure details</white>"
+      preview: "<gray>/mltest preview <ID> [facing]</gray> <white>- Start preview at current position</white>"
+      layer: "<gray>/mltest layer [up|down|<layer>]</gray> <white>- Switch preview layer</white>"
+      slots: "<gray>/mltest slots <ID></gray> <white>- View structure slots</white>"
+      custom: "<gray>/mltest custom <ID></gray> <white>- View custom data</white>"
+      stop: "<gray>/mltest stop</gray> <white>- Stop all previews</white>"
+      preview_features: "<gray>Preview features:</gray>"
+      feature1: "<white>- Only shows ghost blocks within 7 blocks of player</white>"
+      feature2: "<white>- Only shows current layer, auto-switches when complete</white>"
+      feature3: "<white>- <green>Green</green>=correctly placed <red>Red</red>=missing</white>"
+      test_structures: "<gray>Test structures:</gray>"
+      test_simple: "<white>test_simple_3x3</white> <gray>- Simple 3x3 crafting table structure</gray>"
+      test_rebar: "<white>test_rebar_machine</white> <gray>- Rebar component machine</gray>"
+      test_loose: "<white>test_loose_furnace</white> <gray>- Loose matching furnace</gray>"
+      test_blocks: "<gray>Test blocks:</gray>"
+      block_test_controller: "<aqua>monolith:test_controller</aqua> <gray>- Crafting table texture</gray>"
+      block_furnace_core: "<aqua>monolith:furnace_core</aqua> <gray>- Furnace texture</gray>"
+      block_machine_core: "<aqua>monolith:machine_core</aqua> <gray>- Blast furnace texture</gray>"
+      block_custom_controller: "<aqua>monolith:custom_controller</aqua> <gray>- Lodestone texture (universal controller)</gray>"
+    
+    reload:
+      starting: "<green>Reloading...</green>"
+      complete: "<green>Reload complete! Loaded %count% structures</green>"
+    
+    list:
+      title: "<gold>[MonolithLib] Registered structures (%count%):</gold>"
+      empty: "<yellow>No registered structures</yellow>"
+      hint: "<gray>Tip: Put structure files in %path%</gray>"
+      formats: "<gray>Supported formats: .mnb, .schem, .litematic, .nbt</gray>"
+    
+    files:
+      title: "<gold>[MonolithLib] File directories:</gold>"
+      imports: "<gray>imports/</gray> <white>- Files to import</white>"
+      blueprints: "<gray>blueprints/</gray> <white>- Blueprints (original structure + config)</white>"
+      products: "<gray>products/</gray> <white>- Products (final usable structures)</white>"
+      imports_title: "<gold>[MonolithLib] To import (%count%):</gold>"
+      blueprints_title: "<gold>[MonolithLib] Blueprints (%count%):</gold>"
+      products_title: "<gold>[MonolithLib] Products (%count%):</gold>"
+      status_ready: "<green>[Ready]</green>"
+      status_pending: "<yellow>[Pending config]</yellow>"
+      status_missing: "<red>[Missing data]</red>"
+      more_files: "<gray>... and %count% more files</gray>"
+      no_files: "<yellow>No structure files found</yellow>"
+      no_files_hint: "<gray>Put .schem/.litematic/.nbt files in imports/ directory</gray>"
+    
+    info:
+      title: "<gold>[MonolithLib] Info:</gold>"
+      version: "<gray>Version:</gray> <white>%version%</white>"
+      registered: "<gray>Registered structures:</gray> <white>%count%</white>"
+      import_dir: "<gray>Import directory:</gray> <white>%path%</white>"
+      blueprint_dir: "<gray>Blueprint directory:</gray> <white>%path%</white>"
+      product_dir: "<gray>Product directory:</gray> <white>%path%</white>"
+      formats: "<gray>Supported formats:</gray> <white>.mnb, .schem, .litematic, .nbt</white>"
+      rebar_enabled: "<green>Enabled</green>"
+      rebar_disabled: "<red>Not detected</red>"
+      rebar_integration: "<gray>Rebar integration:</gray> %status%"
+    
+    usage: "<red>Usage: %usage%</red>"
+    point_at_controller: "<red>Please point at a registered controller block!</red>"
+    controller_must_be_rebar: "<gray>Controller must be a Rebar block with associated structure</gray>"
+    construct_failed: "<red>Failed to start construction</red>"
+  
+  test:
+    controller_detected: "<gray>[MLTest] Detected test_controller -> test_simple_3x3</gray>"
+    furnace_detected: "<gray>[MLTest] Detected furnace_core -> test_loose_furnace</gray>"
+    machine_detected: "<gray>[MLTest] Detected machine_core -> test_rebar_machine</gray>"
+    rebar_required: "<aqua>[MLTest] This structure requires Rebar components!</aqua>"
+    custom_detected: "<gray>[MLTest] Detected custom_controller</gray>"
+    custom_hint: "<yellow>[MLTest] This is a universal controller, please configure the corresponding structure in YAML</yellow>"
+    preview_started: "<green>Preview started: %structure_id%</green>"
+  
+  rebar:
+    integration_enabled: "Rebar integration enabled"
+    integration_disabled: "Rebar not detected, skipping integration"
+    integration_failed: "Rebar initialization failed: %error%"
+  
+  io:
+    imported_blueprint: "Imported blueprint: %name% (%count% blocks)"
+    rebuilt_product: "Rebuilt product: %name%"
+    loaded_standalone: "Loaded standalone product: %name%"
+    load_failed: "Failed to load .mnb file: %file% - %error%"
+    save_failed: "Failed to save .mnb file: %file% - %error%"
+  
+  init:
+    starting: "Initializing..."
+    complete: "Initialization complete! Version: %version%"
+    shutting_down: "Shutting down..."
+    shutdown_complete: "Shutdown complete"
+    registering_structure: "Registering structure: %id% (%size%, %count% non-air blocks)"
+    loaded_structures: "Loaded %count% structures"
+    test_module_init: "Initializing test module..."
+    test_module_complete: "Test module initialized! Use /mltest for commands"
+    test_structures_registered: "Registered %count% test structures"
+    test_blocks_registered: "Registered %count% test Rebar blocks"

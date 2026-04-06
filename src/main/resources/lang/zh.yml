@@ -1,0 +1,170 @@
+addon: "MonolithLib"
+
+item:
+  test_controller:
+    name: "测试控制器"
+    lore: "用于结构测试的控制器方块"
+  furnace_core:
+    name: "熔炉核心"
+    lore: "用于熔炼结构的熔炉核心方块"
+  machine_core:
+    name: "机器核心"
+    lore: "用于复杂机器的机器核心方块"
+  custom_controller:
+    name: "自定义控制器"
+    lore: "用于自定义结构的通用控制器"
+
+message:
+  prefix: "<gold>[MonolithLib]</gold>"
+  prefix_test: "<gray>[MLTest]</gray>"
+  
+  permission_denied: "<red>权限不足!</red>"
+  player_only: "<red>此命令只能由玩家执行!</red>"
+  
+  preview:
+    started: "<green>已启动预览模式: %structure_id% (%facing%)</green>"
+    stopped: "<green>已停止 %count% 个预览</green>"
+    expired: "<yellow>预览已过期</yellow>"
+    no_active: "<red>你当前没有活动的预览</red>"
+    layer_changed: "<green>已切换到层: %layer%</green>"
+    layer_up: "<green>已切换到上一层</green>"
+    layer_down: "<green>已切换到下一层</green>"
+    layer_top: "<red>已经是最高层了</red>"
+    layer_bottom: "<red>已经是最低层了</red>"
+    layer_invalid: "<red>无效的层数: %layer%</red>"
+    layer_out_of_range: "<red>层数超出范围</red>"
+    current_layer: "<gray>当前层: <white>%current%/%max%</white></gray>"
+    current_position: "<gray>当前位置: <white>%x%, %y%, %z%</white></gray>"
+    use_layer_command: "<gray>使用 /mltest layer up/down 切换层</gray>"
+    progress: "<gray>进度: <white>%correct%/%total%</white> <green>%completed%</green></gray>"
+    completed: "<green>结构 %structure_id% 已完成!</green>"
+    controller_broken: "<red>控制器方块已被破坏，预览已取消</red>"
+    not_found: "<red>结构不存在: %structure_id%</red>"
+    start_preview: "<gray>使用 /mltest preview <ID> 启动预览</gray>"
+    preview_will_expire: "<gray>预览将在10秒后自动消失</gray>"
+    preview_cancelled: "<green>已取消预览</green>"
+    preview_failed: "<red>预览创建失败</red>"
+  
+  structure:
+    formed: "<green>结构 %structure_id% 已形成!</green>"
+    broken: "<red>结构 %structure_id% 已损坏!</red>"
+    not_found: "<red>结构不存在: %structure_id%</red>"
+    no_blocks: "<yellow>警告: 此结构没有定义任何方块!</yellow>"
+    add_blocks_hint: "<gray>请在 YAML 配置中添加 blocks 部分</gray>"
+    controller_detected: "<green>检测到控制器: %key%</green>"
+    associated_structure: "<gray>关联结构: %structure_id%</gray>"
+    block_count: "<gray>方块数: %count%</gray>"
+    slots: "<gray>槽位: %slots%</gray>"
+    custom_data: "<gray>自定义数据: %count% 项</gray>"
+  
+  command:
+    help:
+      title: "<gold>[MonolithLib] 帮助:</gold>"
+      reload: "<gray>/ml reload</gray> <white>- 重新加载所有结构</white>"
+      list: "<gray>/ml list</gray> <white>- 列出所有已注册结构</white>"
+      files: "<gray>/ml files</gray> <white>- 列出结构文件</white>"
+      preview: "<gray>/ml preview</gray> <white>- 预览结构 (指向控制器)</white>"
+      construct: "<gray>/ml construct</gray> <white>- 一键建造 (指向控制器)</white>"
+      info: "<gray>/ml info</gray> <white>- 显示插件信息</white>"
+      usage: "<gray>使用方法:</gray>"
+      step1: "<white>1. 指向已注册的控制器方块</white>"
+      step2: "<white>2. 输入 /ml preview 预览</white>"
+      step3: "<white>3. 输入 /ml construct 建造</white>"
+    
+    test_help:
+      title: "<gold>[MonolithLib Test] 测试命令:</gold>"
+      list: "<gray>/mltest list</gray> <white>- 列出所有结构</white>"
+      info: "<gray>/mltest info <ID></gray> <white>- 查看结构详情</white>"
+      preview: "<gray>/mltest preview <ID> [facing]</gray> <white>- 在当前位置启动预览</white>"
+      layer: "<gray>/mltest layer [up|down|<层数>]</gray> <white>- 切换预览层</white>"
+      slots: "<gray>/mltest slots <ID></gray> <white>- 查看结构槽位</white>"
+      custom: "<gray>/mltest custom <ID></gray> <white>- 查看自定义数据</white>"
+      stop: "<gray>/mltest stop</gray> <white>- 停止所有预览</white>"
+      preview_features: "<gray>预览模式特性:</gray>"
+      feature1: "<white>- 只显示玩家半径7格内的幽灵方块</white>"
+      feature2: "<white>- 只显示当前层，建完自动切换下一层</white>"
+      feature3: "<white>- <green>绿色</green>=已正确放置 <red>红色</red>=缺失</white>"
+      test_structures: "<gray>测试结构:</gray>"
+      test_simple: "<white>test_simple_3x3</white> <gray>- 简单3x3工作台结构</gray>"
+      test_rebar: "<white>test_rebar_machine</white> <gray>- Rebar组件机器</gray>"
+      test_loose: "<white>test_loose_furnace</white> <gray>- 宽松匹配熔炉</gray>"
+      test_blocks: "<gray>测试方块:</gray>"
+      block_test_controller: "<aqua>monolith:test_controller</aqua> <gray>- 工作台材质</gray>"
+      block_furnace_core: "<aqua>monolith:furnace_core</aqua> <gray>- 熔炉材质</gray>"
+      block_machine_core: "<aqua>monolith:machine_core</aqua> <gray>- 高炉材质</gray>"
+      block_custom_controller: "<aqua>monolith:custom_controller</aqua> <gray>- 磁石材质 (通用控制器)</gray>"
+    
+    reload:
+      starting: "<green>正在重新加载...</green>"
+      complete: "<green>重新加载完成! 共加载 %count% 个结构</green>"
+    
+    list:
+      title: "<gold>[MonolithLib] 已注册结构 (%count%):</gold>"
+      empty: "<yellow>暂无已注册的结构</yellow>"
+      hint: "<gray>提示: 将结构文件放入 %path%</gray>"
+      formats: "<gray>支持格式: .mnb, .schem, .litematic, .nbt</gray>"
+    
+    files:
+      title: "<gold>[MonolithLib] 文件目录:</gold>"
+      imports: "<gray>imports/</gray> <white>- 待导入文件</white>"
+      blueprints: "<gray>blueprints/</gray> <white>- 蓝图 (原始结构 + 配置)</white>"
+      products: "<gray>products/</gray> <white>- 成品 (最终可用结构)</white>"
+      imports_title: "<gold>[MonolithLib] 待导入 (%count%):</gold>"
+      blueprints_title: "<gold>[MonolithLib] 蓝图 (%count%):</gold>"
+      products_title: "<gold>[MonolithLib] 成品 (%count%):</gold>"
+      status_ready: "<green>[就绪]</green>"
+      status_pending: "<yellow>[待配置]</yellow>"
+      status_missing: "<red>[缺失数据]</red>"
+      more_files: "<gray>... 还有 %count% 个文件</gray>"
+      no_files: "<yellow>未发现结构文件</yellow>"
+      no_files_hint: "<gray>将 .schem/.litematic/.nbt 文件放入 imports/ 目录</gray>"
+    
+    info:
+      title: "<gold>[MonolithLib] 信息:</gold>"
+      version: "<gray>版本:</gray> <white>%version%</white>"
+      registered: "<gray>已注册结构:</gray> <white>%count%</white>"
+      import_dir: "<gray>导入目录:</gray> <white>%path%</white>"
+      blueprint_dir: "<gray>蓝图目录:</gray> <white>%path%</white>"
+      product_dir: "<gray>成品目录:</gray> <white>%path%</white>"
+      formats: "<gray>支持格式:</gray> <white>.mnb, .schem, .litematic, .nbt</white>"
+      rebar_enabled: "<green>启用</green>"
+      rebar_disabled: "<red>未检测到</red>"
+      rebar_integration: "<gray>Rebar 集成:</gray> %status%"
+    
+    usage: "<red>用法: %usage%</red>"
+    point_at_controller: "<red>请指向一个已注册的控制器方块!</red>"
+    controller_must_be_rebar: "<gray>控制器必须是 Rebar 方块且关联了结构</gray>"
+    construct_failed: "<red>建造启动失败</red>"
+  
+  test:
+    controller_detected: "<gray>[MLTest] 检测到 test_controller -> test_simple_3x3</gray>"
+    furnace_detected: "<gray>[MLTest] 检测到 furnace_core -> test_loose_furnace</gray>"
+    machine_detected: "<gray>[MLTest] 检测到 machine_core -> test_rebar_machine</gray>"
+    rebar_required: "<aqua>[MLTest] 此结构需要 Rebar 组件!</aqua>"
+    custom_detected: "<gray>[MLTest] 检测到 custom_controller</gray>"
+    custom_hint: "<yellow>[MLTest] 这是一个通用控制器，请在 YAML 中配置对应结构</yellow>"
+    preview_started: "<green>已启动预览: %structure_id%</green>"
+  
+  rebar:
+    integration_enabled: "Rebar 集成已启用"
+    integration_disabled: "未检测到 Rebar，跳过集成"
+    integration_failed: "Rebar 初始化失败: %error%"
+  
+  io:
+    imported_blueprint: "已导入蓝图: %name% (%count% 方块)"
+    rebuilt_product: "已重建产品: %name%"
+    loaded_standalone: "加载独立产品: %name%"
+    load_failed: "加载 .mnb 文件失败: %file% - %error%"
+    save_failed: "保存 .mnb 文件失败: %file% - %error%"
+  
+  init:
+    starting: "正在初始化..."
+    complete: "初始化完成! 版本: %version%"
+    shutting_down: "正在关闭..."
+    shutdown_complete: "已关闭"
+    registering_structure: "注册结构: %id% (%size%, %count% 非空方块)"
+    loaded_structures: "共加载 %count% 个结构"
+    test_module_init: "初始化测试模块..."
+    test_module_complete: "测试模块初始化完成! 使用 /mltest 查看命令"
+    test_structures_registered: "已注册 %count% 个测试结构"
+    test_blocks_registered: "已注册 %count% 个测试 Rebar 方块"
