@@ -45,17 +45,13 @@ object TestBlockListener : Listener {
             else -> return
         }
         
-        val session = MonolithAPI.getInstance().startPreview(player, block.location, structureId, facing)
+        val session = MonolithAPI.getInstance().preview.start(player, structureId, block.location, facing)
         if (session != null) {
             player.sendMessage(I18n.Message.Test.previewStarted(structureId))
             player.sendMessage(I18n.Message.Preview.currentLayer(session.currentLayer, session.maxLayer))
             
-            val structure = session.structure
-            if (structure.slots.isNotEmpty()) {
-                player.sendMessage(I18n.Message.Structure.slots(structure.slots.keys.joinToString(", ")))
-            }
-            if (structure.customData.isNotEmpty()) {
-                player.sendMessage(I18n.Message.Structure.customData(structure.customData.size))
+            if (session.blueprint.shape.blocks.isNotEmpty()) {
+                player.sendMessage(I18n.Message.Structure.blockCount(session.blueprint.shape.blocks.size))
             }
         }
     }

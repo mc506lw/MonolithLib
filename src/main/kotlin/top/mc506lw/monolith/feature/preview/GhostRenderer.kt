@@ -4,7 +4,7 @@ import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
-import top.mc506lw.monolith.core.structure.MonolithStructure
+import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.transform.CoordinateTransform
 import top.mc506lw.monolith.core.transform.Facing
 import top.mc506lw.rebar.MonolithLib
@@ -26,7 +26,7 @@ class GhostRenderer(private val plugin: MonolithLib) {
     fun startPreview(
         player: Player,
         controllerLocation: Location,
-        structure: MonolithStructure,
+        blueprint: Blueprint,
         facing: Facing = Facing.NORTH
     ): PreviewSession? {
         val sessionId = locationToKey(controllerLocation)
@@ -38,10 +38,10 @@ class GhostRenderer(private val plugin: MonolithLib) {
         val session = PreviewSession(
             sessionId = sessionId,
             playerId = player.uniqueId,
-            structureId = structure.id,
-            structure = structure,
+            blueprintId = blueprint.id,
+            blueprint = blueprint,
             controllerLocation = controllerLocation.clone(),
-            transform = transform
+            _transform = transform
         )
         
         sessions[sessionId] = session

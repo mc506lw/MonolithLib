@@ -4,7 +4,8 @@ import io.github.pylonmc.rebar.block.BlockStorage
 import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
 import org.bukkit.block.data.BlockData
-import top.mc506lw.monolith.core.predicate.Predicate
+import top.mc506lw.monolith.validation.predicate.Predicate
+import top.mc506lw.monolith.validation.predicate.RebarPredicate
 
 object RebarAdapter {
     
@@ -52,7 +53,7 @@ object RebarAdapter {
         return if (isRebarBlock(block)) {
             val key = getRebarBlockKey(block) ?: return null
             val previewBlockData = block.blockData
-            top.mc506lw.monolith.core.predicate.RebarPredicate(key, previewBlockData)
+            RebarPredicate(key, previewBlockData)
         } else {
             null
         }

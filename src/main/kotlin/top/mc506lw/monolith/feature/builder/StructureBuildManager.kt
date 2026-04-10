@@ -3,7 +3,7 @@ package top.mc506lw.monolith.feature.builder
 import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.entity.Player
-import top.mc506lw.monolith.core.structure.MonolithStructure
+import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.transform.Facing
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -14,7 +14,7 @@ object StructureBuildManager {
     
     fun startBuild(
         player: Player,
-        structure: MonolithStructure,
+        blueprint: Blueprint,
         controllerLocation: Location,
         facing: Facing
     ): StructureBuilder? {
@@ -24,7 +24,7 @@ object StructureBuildManager {
         
         val builder = StructureBuilder(
             player = player,
-            structure = structure,
+            blueprint = blueprint,
             controllerLocation = controllerLocation,
             facing = facing,
             isSurvival = isSurvival

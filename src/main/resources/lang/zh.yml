@@ -61,15 +61,14 @@ message:
     help:
       title: "<gold>[MonolithLib] 帮助:</gold>"
       reload: "<gray>/ml reload</gray> <white>- 重新加载所有结构</white>"
-      list: "<gray>/ml list</gray> <white>- 列出所有已注册结构</white>"
-      files: "<gray>/ml files</gray> <white>- 列出结构文件</white>"
-      preview: "<gray>/ml preview</gray> <white>- 预览结构 (指向控制器)</white>"
-      construct: "<gray>/ml construct</gray> <white>- 一键建造 (指向控制器)</white>"
-      info: "<gray>/ml info</gray> <white>- 显示插件信息</white>"
+      list: "<gray>/ml list</gray> <white>- 列出所有已注册蓝图</white>"
+      info: "<gray>/ml info [ID]</gray> <white>- 显示插件信息或蓝图详情</white>"
+      preview: "<gray>/ml preview [cancel]</gray> <white>- 预览结构 (指向控制器)</white>"
+      build: "<gray>/ml build [cancel]</gray> <white>- 一键建造 (指向控制器)</white>"
       usage: "<gray>使用方法:</gray>"
       step1: "<white>1. 指向已注册的控制器方块</white>"
       step2: "<white>2. 输入 /ml preview 预览</white>"
-      step3: "<white>3. 输入 /ml construct 建造</white>"
+      step3: "<white>3. 输入 /ml build 建造</white>"
     
     test_help:
       title: "<gold>[MonolithLib Test] 测试命令:</gold>"
@@ -122,7 +121,7 @@ message:
     info:
       title: "<gold>[MonolithLib] 信息:</gold>"
       version: "<gray>版本:</gray> <white>%version%</white>"
-      registered: "<gray>已注册结构:</gray> <white>%count%</white>"
+      registered: "<gray>已注册蓝图:</gray> <white>%count%</white>"
       import_dir: "<gray>导入目录:</gray> <white>%path%</white>"
       blueprint_dir: "<gray>蓝图目录:</gray> <white>%path%</white>"
       product_dir: "<gray>成品目录:</gray> <white>%path%</white>"
@@ -130,11 +129,18 @@ message:
       rebar_enabled: "<green>启用</green>"
       rebar_disabled: "<red>未检测到</red>"
       rebar_integration: "<gray>Rebar 集成:</gray> %status%"
+      blueprint_not_found: "<red>未找到蓝图: %id%</red>"
+      blueprint_title: "<gold>[蓝图] %id%</gold>"
+      size: "<gray>尺寸:</gray> <white>%x% x %y% x %z%</white>"
+      block_count: "<gray>方块数:</gray> <white>%count%</white>"
+      name: "<gray>名称:</gray> <white>%name%</white>"
+      description: "<gray>描述:</gray> <white>%description%</white>"
     
     usage: "<red>用法: %usage%</red>"
     point_at_controller: "<red>请指向一个已注册的控制器方块!</red>"
-    controller_must_be_rebar: "<gray>控制器必须是 Rebar 方块且关联了结构</gray>"
-    construct_failed: "<red>建造启动失败</red>"
+    controller_must_be_rebar: "<gray>控制器必须是 Rebar 方块且关联了蓝图</gray>"
+    build_cancelled: "<yellow>已取消建造</yellow>"
+    build_failed: "<red>建造启动失败</red>"
   
   test:
     controller_detected: "<gray>[MLTest] 检测到 test_controller -> test_simple_3x3</gray>"

@@ -12,11 +12,14 @@ import org.bukkit.util.Transformation
 import org.joml.AxisAngle4f
 import org.joml.Vector3f
 import top.mc506lw.monolith.core.math.Vector3i
-import top.mc506lw.monolith.core.predicate.Predicate
-import top.mc506lw.monolith.core.predicate.RotatedPredicate
-import top.mc506lw.monolith.core.structure.MonolithStructure
+import top.mc506lw.monolith.core.model.Blueprint
+import top.mc506lw.monolith.core.model.Shape
+import top.mc506lw.monolith.validation.predicate.Predicate
+import top.mc506lw.monolith.validation.predicate.Predicates
+import top.mc506lw.monolith.validation.predicate.RotatedPredicate
 import top.mc506lw.monolith.core.transform.BlockStateRotator
 import top.mc506lw.monolith.core.transform.CoordinateTransform
+import top.mc506lw.monolith.core.transform.Facing
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -38,12 +41,32 @@ data class GhostBlock(
 class PreviewSession(
     val sessionId: String,
     val playerId: UUID,
-    val structureId: String,
-    val structure: MonolithStructure,
+    val blueprintId: String,
+    val blueprint: Blueprint,
     val controllerLocation: Location,
-    val transform: CoordinateTransform,
+    private val _transform: CoordinateTransform,
     private val renderRadius: Int = 7
 ) {
+    constructor(
+        sessionId: String,
+        playerId: UUID,
+        blueprintId: String,
+        blueprint: Blueprint,
+        controllerLocation: Location,
+        facing: Facing = Facing.NORTH,
+        renderRadius: Int = 7
+    ) : this(
+        sessionId = sessionId,
+        playerId = playerId,
+        blueprintId = blueprintId,
+        blueprint = blueprint,
+        controllerLocation = controllerLocation,
+        _transform = CoordinateTransform(facing),
+        renderRadius = renderRadius
+    )
+    
+    val structureId: String get() = blueprintId
+    val transform: CoordinateTransform get() = _transform
     private val ghostBlocks = mutableListOf<GhostBlock>()
     private val displayEntities = ConcurrentHashMap<Vector3i, BlockDisplay>()
     
@@ -73,27 +96,30 @@ class PreviewSession(
     }
     
     private fun initializeGhostBlocks() {
+        val shape: Shape = blueprint.shape
+        val centerOffset = blueprint.meta.controllerOffset
         val rotationSteps = transform.facing.rotationSteps
         
-        for (entry in structure.flattenedBlocks) {
+        for (blockEntry in shape.blocks) {
             val worldPos = transform.toWorldPosition(
                 controllerPos = Vector3i(
                     controllerLocation.blockX,
                     controllerLocation.blockY,
                     controllerLocation.blockZ
                 ),
-                relativePos = entry.relativePosition,
-                centerOffset = structure.centerOffset
+                relativePos = blockEntry.position,
+                centerOffset = centerOffset
             )
             
-            val originalPreview = entry.previewBlockData ?: Material.STONE.createBlockData()
+            val originalPreview = blockEntry.blockData.clone()
             val rotatedPreview = BlockStateRotator.rotate(originalPreview, rotationSteps)
             
-            val rotatedPredicate = RotatedPredicate(entry.predicate, rotationSteps)
+            val predicate = Predicates.strict(blockEntry.blockData)
+            val rotatedPredicate = RotatedPredicate(predicate, rotationSteps)
             
             ghostBlocks.add(GhostBlock(
                 worldPos = worldPos,
-                relativePos = entry.relativePosition,
+                relativePos = blockEntry.position,
                 predicate = rotatedPredicate,
                 previewBlockData = rotatedPreview
             ))

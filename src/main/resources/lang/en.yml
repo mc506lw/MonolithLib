@@ -61,15 +61,14 @@ message:
     help:
       title: "<gold>[MonolithLib] Help:</gold>"
       reload: "<gray>/ml reload</gray> <white>- Reload all structures</white>"
-      list: "<gray>/ml list</gray> <white>- List all registered structures</white>"
-      files: "<gray>/ml files</gray> <white>- List structure files</white>"
-      preview: "<gray>/ml preview</gray> <white>- Preview structure (point at controller)</white>"
-      construct: "<gray>/ml construct</gray> <white>- Quick build (point at controller)</white>"
-      info: "<gray>/ml info</gray> <white>- Show plugin info</white>"
+      list: "<gray>/ml list</gray> <white>- List all registered blueprints</white>"
+      info: "<gray>/ml info [ID]</gray> <white>- Show plugin info or blueprint details</white>"
+      preview: "<gray>/ml preview [cancel]</gray> <white>- Preview structure (point at controller)</white>"
+      build: "<gray>/ml build [cancel]</gray> <white>- Quick build (point at controller)</white>"
       usage: "<gray>Usage:</gray>"
       step1: "<white>1. Point at a registered controller block</white>"
       step2: "<white>2. Type /ml preview to preview</white>"
-      step3: "<white>3. Type /ml construct to build</white>"
+      step3: "<white>3. Type /ml build to build</white>"
     
     test_help:
       title: "<gold>[MonolithLib Test] Test commands:</gold>"
@@ -122,7 +121,7 @@ message:
     info:
       title: "<gold>[MonolithLib] Info:</gold>"
       version: "<gray>Version:</gray> <white>%version%</white>"
-      registered: "<gray>Registered structures:</gray> <white>%count%</white>"
+      registered: "<gray>Registered blueprints:</gray> <white>%count%</white>"
       import_dir: "<gray>Import directory:</gray> <white>%path%</white>"
       blueprint_dir: "<gray>Blueprint directory:</gray> <white>%path%</white>"
       product_dir: "<gray>Product directory:</gray> <white>%path%</white>"
@@ -130,11 +129,18 @@ message:
       rebar_enabled: "<green>Enabled</green>"
       rebar_disabled: "<red>Not detected</red>"
       rebar_integration: "<gray>Rebar integration:</gray> %status%"
+      blueprint_not_found: "<red>Blueprint not found: %id%</red>"
+      blueprint_title: "<gold>[Blueprint] %id%</gold>"
+      size: "<gray>Size:</gray> <white>%x% x %y% x %z%</white>"
+      block_count: "<gray>Block count:</gray> <white>%count%</white>"
+      name: "<gray>Name:</gray> <white>%name%</white>"
+      description: "<gray>Description:</gray> <white>%description%</white>"
     
     usage: "<red>Usage: %usage%</red>"
     point_at_controller: "<red>Please point at a registered controller block!</red>"
-    controller_must_be_rebar: "<gray>Controller must be a Rebar block with associated structure</gray>"
-    construct_failed: "<red>Failed to start construction</red>"
+    controller_must_be_rebar: "<gray>Controller must be a Rebar block with associated blueprint</gray>"
+    build_cancelled: "<yellow>Build cancelled</yellow>"
+    build_failed: "<red>Failed to start construction</red>"
   
   test:
     controller_detected: "<gray>[MLTest] Detected test_controller -> test_simple_3x3</gray>"

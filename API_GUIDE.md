@@ -1,793 +1,227 @@
-# MonolithLib API 使用指南
+<p align="center">
+  <img src="./readme-header.png" alt="MonolithLib Banner" width="100%">
+</p>
 
-MonolithLib 是一个强大的 Minecraft 多方块结构库，支持结构定义、预览、建造检测和 Rebar 集成。
+<div align="center">
+  <img src="https://img.shields.io/badge/Minecraft-1.21.11-green?style=for-the-badge&logo=minecraft" alt="Minecraft">
+  <img src="https://img.shields.io/badge/Kotlin-1.9.0-purple?style=for-the-badge&logo=kotlin" alt="Kotlin">
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License">
+</div>
 
-## 目录
+<p align="center">
+  <a href="https://github.com/pylonmc/rebar" target="_blank">
+    <img src="https://img.shields.io/badge/生态伙伴-Rebar%200.36.2-9370DB?style=flat-square" alt="Rebar">
+  </a>
+</p>
 
-- [快速开始](#快速开始)
-- [核心概念](#核心概念)
-- [API 参考](#api-参考)
-- [方块谓词系统](#方块谓词系统)
-- [坐标变换系统](#坐标变换系统)
-- [结构文件格式](#结构文件格式)
-- [Rebar 集成](#rebar-集成)
-- [完整示例](#完整示例)
+<div align="center">
+  <h1>MonolithLib</h1>
+  <p><strong>Rebar 多方块机器的现代 3D 打印方案</strong></p>
+  <p>彻底解决巨型结构预览卡顿 · 完美支持楼梯等复杂方块状态 · 告别手写坐标</p>
+</div>
 
----
+<div align="center">
+  <a href="#-核心理念"><strong>核心理念</strong></a> ·
+  <a href="#-快速开始"><strong>快速开始</strong></a> ·
+  <a href="#-rebar-集成指南"><strong>Rebar 集成</strong></a> ·
+  <a href="#-玩家使用方法"><strong>玩家指南</strong></a> ·
+  <a href="#-项目结构"><strong>架构</strong></a>
+</div>
 
-## 快速开始
-
-### 添加依赖
-
-```kotlin
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    compileOnly("top.mc506lw:monolithlib:1.0.0")
-}
-```
-
-### 获取 API 实例
-
-```kotlin
-val api = MonolithAPI.getInstance()
-```
-
-### 注册一个简单结构
-
-```kotlin
-val structure = buildStructure("my_furnace") {
-    size(3, 3, 3)
-    center(1, 0, 1)
-    
-    set(0, 0, 0, Predicates.strict(Material.BRICKS))
-    set(1, 0, 0, Predicates.strict(Material.BRICKS))
-    set(2, 0, 0, Predicates.strict(Material.BRICKS))
-    
-    set(0, 0, 1, Predicates.strict(Material.BRICKS))
-    set(1, 0, 1, Predicates.air())
-    set(2, 0, 1, Predicates.strict(Material.BRICKS))
-    
-    set(0, 0, 2, Predicates.strict(Material.BRICKS))
-    set(1, 0, 2, Predicates.strict(Material.FURNACE))
-    set(2, 0, 2, Predicates.strict(Material.BRICKS))
-    
-    slot("input", 1, 0, 1)
-    slot("output", 1, 0, 2)
-    
-    meta(
-        name = "简易熔炉",
-        description = "一个简单的熔炉结构",
-        author = "YourName"
-    )
-}
-
-api.registerStructure(structure)
-```
+<br/>
 
 ---
 
-## 核心概念
+## 💡 核心理念：物理与逻辑的解耦
 
-### MonolithStructure
+在使用 MonolithLib 之前，请先理解它的核心设计哲学。我们将多方块机器分成了两个完全独立的世界：
 
-`MonolithStructure` 是核心数据类，包含：
+- **物理层（MonolithLib 负责）**：机器长什么样？由哪些方块组成？楼梯朝哪个方向？这叫 **Shape（形状）**。
+- **逻辑层（Rebar 负责）**：机器能干什么？哪个方块算热源？这叫 **Component（组件）**。
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `id` | String | 结构唯一标识符 |
-| `sizeX/Y/Z` | Int | 结构尺寸 |
-| `centerOffset` | Vector3i | 中心偏移（控制器位置） |
-| `flattenedBlocks` | List<FlattenedBlock> | 扁平化方块列表 |
-| `controllerRebarKey` | NamespacedKey? | Rebar 控制器键（可选） |
-| `slots` | Map<String, Vector3i> | 功能槽位 |
-| `customData` | Map<String, Any> | 自定义数据 |
-| `meta` | StructureMeta | 元数据（名称、描述、作者等） |
+MonolithLib **不干涉、不读取** Rebar 的组件代码。我们通过 **“相对坐标对齐”** 这唯一的桥梁，让两者完美咬合。
 
-### FlattenedBlock
-
-```kotlin
-data class FlattenedBlock(
-    val relativePosition: Vector3i,    // 相对坐标
-    val predicate: Predicate,           // 方块谓词
-    val previewBlockData: BlockData?,   // 预览显示
-    val hint: String?                   // 提示文本
-)
-```
-
-### Facing（朝向）
-
-```kotlin
-enum class Facing(val rotationSteps: Int) {
-    NORTH(0),   // 无旋转
-    EAST(1),    // 顺时针 90°
-    SOUTH(2),   // 180°
-    WEST(3);    // 顺时针 270°
-    
-    companion object {
-        fun fromYaw(yaw: Float): Facing
-        fun fromBlockFace(face: BlockFace): Facing
-    }
-}
-```
+### 两个核心概念
+1. **Shape（形状）**：纯粹的 3D 物理模型数据。从 `.mnb` 等文件加载而来，只包含相对坐标和精确的 `BlockData`。
+2. **Blueprint（蓝图）**：`Shape` + 业务元数据（显示名、描述、所需材料清单、核心方块偏移量）。这是玩家和开发者直接交互的对象。
 
 ---
 
-## API 参考
+## ✨ 特性
 
-### MonolithAPI
-
-主要 API 入口，提供所有核心功能。
-
-#### 结构注册
-
-```kotlin
-interface MonolithAPI {
-    fun registerStructure(structure: MonolithStructure)
-    fun unregisterStructure(id: String): Boolean
-    fun getStructure(id: String): MonolithStructure?
-    fun getAllStructures(): Map<String, MonolithStructure>
-}
-```
-
-#### 预览功能
-
-```kotlin
-interface MonolithAPI {
-    fun startPreview(
-        player: Player,
-        controllerLocation: Location,
-        structureId: String,
-        facing: Facing = Facing.NORTH
-    ): PreviewSession?
-    
-    fun stopPreview(player: Player)
-    fun getPlayerPreviewSessions(player: Player): List<PreviewSession>
-    
-    fun nextPreviewLayer(player: Player): Boolean
-    fun prevPreviewLayer(player: Player): Boolean
-    fun setPreviewLayer(player: Player, layer: Int): Boolean
-}
-```
-
-#### 结构检测
-
-```kotlin
-interface MonolithAPI {
-    fun checkStructure(
-        controllerLocation: Location,
-        structureId: String,
-        facing: Facing = Facing.NORTH
-    ): StructureCheckResult
-    
-    fun findMatchingStructures(
-        controllerLocation: Location,
-        facing: Facing = Facing.NORTH
-    ): List<Pair<MonolithStructure, StructureCheckResult>>
-}
-```
-
-#### 建造功能
-
-```kotlin
-interface MonolithAPI {
-    fun startBuild(
-        player: Player,
-        controllerLocation: Location,
-        structureId: String,
-        facing: Facing = Facing.NORTH
-    ): BuildSession?
-    
-    fun cancelBuild(player: Player)
-    fun getBuildSession(player: Player): BuildSession?
-}
-```
-
-### StructureBuilderDSL
-
-使用 DSL 风格构建结构：
-
-```kotlin
-val structure = buildStructure("my_structure") {
-    size(5, 3, 5)
-    center(2, 0, 2)
-    
-    controllerRebar(NamespacedKey("myplugin", "controller"))
-    
-    layer(0) {
-        fill(0, 0, 0, 4, 0, 4, Predicates.strict(Material.STONE))
-    }
-    
-    layer(1) {
-        outline(0, 0, 0, 4, 0, 4, Predicates.strict(Material.STONE))
-    }
-    
-    slot("input", 1, 1, 2)
-    slot("output", 3, 1, 2)
-    
-    customData("processing_time", 200)
-    customData("fuel_consumption", 1.5)
-    
-    meta(
-        name = "我的机器",
-        description = "一个自定义机器",
-        author = "Author",
-        version = "1.0"
-    )
-}
-```
-
-### MonolithStructure.Builder
-
-编程式构建器：
-
-```kotlin
-val structure = MonolithStructure.Builder("my_structure")
-    .size(5, 3, 5)
-    .center(Vector3i(2, 0, 2))
-    .controllerRebar(NamespacedKey("myplugin", "controller"))
-    .set(0, 0, 0, Predicates.strict(Material.STONE))
-    .set(1, 0, 0, Predicates.strict(Material.STONE))
-    .slot("input", Vector3i(1, 1, 2))
-    .customData("key", "value")
-    .meta("名称", "描述", "作者", "版本")
-    .build()
-```
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="33%">
+        <h3>🏗️ 精确的物理形状</h3>
+        <p>原生支持楼梯朝向、半砖、红石方向等所有方块状态，彻底告别 Rebar 原版预览的状态丢失问题</p>
+      </td>
+      <td align="center" width="33%">
+        <h3>👁️ 极致性能预览</h3>
+        <p>类似投影MOD的逐层投影渲染，任何时刻仅计算玩家周身 7 格内的幽灵方块，支持百万级方块巨型结构</p>
+      </td>
+      <td align="center" width="33%">
+        <h3>📦 告别手写坐标</h3>
+        <p>支持导入 .schem/.litematic/.nbt，并导出为极速二进制 .mnb 格式，游戏内搭建，一键导出</p>
+      </td>
+    </tr>
+  </table>
+</div>
 
 ---
 
-## 方块谓词系统
+## 🚀 快速开始（开发者视角）
 
-谓词系统是 MonolithLib 的核心，用于定义方块匹配规则。
+作为 Rebar 机械的开发者，你不需要再写几百行坐标定义，只需三步：
 
-### Predicate 接口
-
-```kotlin
-interface Predicate {
-    fun matches(block: Block): Boolean
-    val previewBlockData: BlockData?
-    val hint: String?
-}
-```
-
-### 内置谓词类型
-
-#### AirPredicate
-
-匹配空气方块：
+### 1. 添加依赖
 
 ```kotlin
-Predicates.air()
+repositories { mavenCentral() }
+dependencies { compileOnly("top.mc506lw:monolithlib:1.0.0") }
 ```
 
-#### AnyPredicate
-
-匹配任意非空气方块：
+### 2. 注册蓝图
 
 ```kotlin
-Predicates.any()
-```
-
-#### StrictPredicate
-
-严格匹配方块类型和状态：
-
-```kotlin
-Predicates.strict(Material.STONE)
-Predicates.strict(Bukkit.createBlockData("minecraft:furnace[facing=north]"))
-```
-
-#### LoosePredicate
-
-宽松匹配，忽略指定状态：
-
-```kotlin
-Predicates.loose(Material.FURNACE, "facing", "lit")
-Predicates.loose(
-    Bukkit.createBlockData("minecraft:furnace[facing=north]"),
-    setOf("facing", "lit")
-)
-```
-
-#### RebarPredicate
-
-匹配 Rebar 方块：
-
-```kotlin
-Predicates.rebar(
-    NamespacedKey("myplugin", "machine_core"),
-    Material.BLAST_FURNACE
-)
-```
-
-### Predicates 工厂方法
-
-```kotlin
-object Predicates {
-    fun air(): AirPredicate
-    fun any(): AnyPredicate
-    fun strict(material: Material): StrictPredicate
-    fun strict(blockData: BlockData): StrictPredicate
-    fun loose(material: Material, vararg ignoredStates: String): LoosePredicate
-    fun loose(blockData: BlockData, ignoredStates: Set<String>): LoosePredicate
-    fun rebar(key: NamespacedKey, previewMaterial: Material): RebarPredicate
-    fun rebar(key: NamespacedKey, previewBlockData: BlockData): RebarPredicate
-}
-```
-
-### 自定义谓词
-
-实现 `Predicate` 接口创建自定义谓词：
-
-```kotlin
-class TagPredicate(
-    private val tag: Tag<Material>,
-    override val previewBlockData: BlockData? = null
-) : Predicate {
-    
-    override fun matches(block: Block): Boolean {
-        return tag.isTagged(block.type)
-    }
-    
-    override val hint: String? = "需要 ${tag.key} 标签的方块"
-}
-
-val structure = buildStructure("tag_example") {
-    set(0, 0, 0, TagPredicate(Tag.LOGS, Material.OAK_LOG.createBlockData()))
-}
-```
-
----
-
-## 坐标变换系统
-
-### CoordinateTransform
-
-处理结构旋转和镜像：
-
-```kotlin
-val transform = CoordinateTransform(
-    facing = Facing.EAST,
-    isFlipped = false
-)
-
-val relativePos = Vector3i(1, 0, 2)
-val worldPos = transform.toWorldPosition(
-    controllerPos = Vector3i(100, 64, 200),
-    relativePos = relativePos,
-    centerOffset = Vector3i(2, 0, 2)
-)
-
-val backToRelative = transform.toRelativePosition(
-    worldPos = worldPos,
-    controllerPos = Vector3i(100, 64, 200),
-    centerOffset = Vector3i(2, 0, 2)
-)
-```
-
-### Facing 工具方法
-
-```kotlin
-val facing = Facing.fromYaw(player.location.yaw)
-val facing = Facing.fromBlockFace(BlockFace.NORTH)
-
-val rotated = facing.rotateClockwise()
-val opposite = facing.opposite()
-```
-
----
-
-## 结构文件格式
-
-### Monolith Binary (.mnb)
-
-高效的二进制格式，支持：
-- 完整结构数据
-- 所有谓词类型
-- 槽位和自定义数据
-- 版本控制
-
-```kotlin
-BinaryFormat.save(structure, File("structure.mnb"), formatVersion = 3, configHash = "")
-val loaded = BinaryFormat.load(File("structure.mnb"))
-```
-
-### 导入外部格式
-
-支持导入：
-- `.schem` (Sponge Schematic)
-- `.litematic` (Litematica)
-- `.nbt` (结构方块 NBT)
-
-```kotlin
-val structure = SchemFormat.load(File("structure.schem"))
-val structure = LitematicFormat.load(File("structure.litematic"))
-val structure = NbtFormat.load(File("structure.nbt"))
-```
-
-### YAML 配置
-
-蓝图配置文件示例：
-
-```yaml
-id: my_machine
-name: "我的机器"
-description: "一个自定义机器"
-author: "Author"
-version: "1.0"
-
-controller:
-  type: rebar
-  key: "myplugin:machine_controller"
-
-size:
-  x: 5
-  y: 3
-  z: 5
-
-center:
-  x: 2
-  y: 0
-  z: 2
-
-slots:
-  input: { x: 1, y: 1, z: 2 }
-  output: { x: 3, y: 1, z: 2 }
-  fuel: { x: 2, y: 1, z: 0 }
-
-custom_data:
-  processing_time: 200
-  fuel_consumption: 1.5
-  recipes:
-    - "iron_ingot"
-    - "gold_ingot"
-
-blocks:
-  - pos: { x: 0, y: 0, z: 0 }
-    type: strict
-    material: STONE
-  - pos: { x: 1, y: 0, z: 0 }
-    type: loose
-    material: FURNACE
-    ignored_states: ["facing", "lit"]
-  - pos: { x: 2, y: 0, z: 0 }
-    type: rebar
-    key: "myplugin:component"
-    preview: BLAST_FURNACE
-```
-
----
-
-## Rebar 集成
-
-### RebarAdapter
-
-```kotlin
-object RebarAdapter {
-    fun isRebarBlock(block: Block): Boolean
-    fun isRebarBlock(block: Block, key: NamespacedKey): Boolean
-    fun getRebarBlock(block: Block): RebarBlock?
-    fun getRebarBlockKey(block: Block): NamespacedKey?
-    fun createRebarPredicate(block: Block): Predicate?
-}
-```
-
-### 控制器绑定
-
-将 Rebar 方块绑定为结构控制器：
-
-```kotlin
-val structure = buildStructure("rebar_machine") {
-    controllerRebar(NamespacedKey("myplugin", "machine_controller"))
-    
-    set(0, 0, 0, Predicates.rebar(
-        NamespacedKey("myplugin", "component_a"),
-        Material.IRON_BLOCK
-    ))
-    set(1, 0, 0, Predicates.rebar(
-        NamespacedKey("myplugin", "component_b"),
-        Material.GOLD_BLOCK
-    ))
-}
-```
-
-### 自动检测
-
-放置绑定的 Rebar 控制器时自动触发预览：
-
-```kotlin
-@EventHandler
-fun onPlace(event: BlockPlaceEvent) {
-    val block = event.block
-    
-    if (RebarAdapter.isRebarBlock(block)) {
-        val key = RebarAdapter.getRebarBlockKey(block) ?: return
+class MyPlugin : JavaPlugin() {
+    override fun onEnable() {
+        // 1. 加载纯物理形状（你在游戏里用工具导出的 .mnb 文件）
+        val shape = MonolithAPI.io.loadShape(File(dataFolder, "blueprints/blast_furnace.mnb"))
         
-        val structures = StructureRegistry.getInstance()
-            .getByControllerKey(key)
-        
-        if (structures.isNotEmpty()) {
-            val structure = structures.first()
-            MonolithAPI.getInstance().startPreview(
-                event.player,
-                block.location,
-                structure.id
+        // 2. 包装为蓝图
+        val blueprint = Blueprint(
+            id = "blast_furnace",
+            shape = shape,
+            meta = BlueprintMeta(
+                name = text("高级高炉").color(NamedTextColor.GOLD),
+                description = listOf(text("能够高温冶炼矿石"))
+                // controllerOffset 默认为 0,0,0，如果导出时选了核心则自动携带
             )
-        }
-    }
-}
-```
-
----
-
-## 完整示例
-
-### 示例 1: 简单熔炉
-
-```kotlin
-class SimpleFurnace {
-    
-    fun register() {
-        val structure = buildStructure("simple_furnace") {
-            size(3, 2, 3)
-            center(1, 0, 1)
-            
-            layer(0) {
-                fill(0, 0, 0, 2, 0, 2, Predicates.strict(Material.COBBLESTONE))
-            }
-            
-            layer(1) {
-                outline(0, 0, 0, 2, 0, 2, Predicates.strict(Material.COBBLESTONE))
-                set(1, 0, 1, Predicates.air())
-            }
-            
-            set(1, 1, 1, Predicates.loose(Material.FURNACE, "facing"))
-            
-            slot("fuel", 0, 1, 1)
-            slot("input", 2, 1, 1)
-            slot("output", 1, 1, 0)
-            
-            meta(
-                name = "简易熔炉",
-                description = "一个简单的熔炉多方块结构",
-                author = "MonolithLib"
-            )
-        }
-        
-        MonolithAPI.getInstance().registerStructure(structure)
-    }
-}
-```
-
-### 示例 2: Rebar 机器
-
-```kotlin
-class RebarMachine {
-    
-    fun register() {
-        val structure = buildStructure("rebar_machine") {
-            size(5, 3, 5)
-            center(2, 0, 2)
-            
-            controllerRebar(NamespacedKey("myplugin", "machine_controller"))
-            
-            layer(0) {
-                fill(0, 0, 0, 4, 0, 4, Predicates.strict(Material.IRON_BLOCK))
-            }
-            
-            layer(1) {
-                outline(0, 0, 0, 4, 0, 4, Predicates.strict(Material.IRON_BLOCK))
-                set(2, 0, 2, Predicates.air())
-            }
-            
-            layer(2) {
-                fill(0, 0, 0, 4, 0, 4, Predicates.strict(Material.IRON_BLOCK))
-                set(2, 0, 2, Predicates.air())
-            }
-            
-            set(0, 1, 2, Predicates.rebar(
-                NamespacedKey("myplugin", "input_hatch"),
-                Material.HOPPER
-            ))
-            set(4, 1, 2, Predicates.rebar(
-                NamespacedKey("myplugin", "output_hatch"),
-                Material.HOPPER
-            ))
-            set(2, 1, 0, Predicates.rebar(
-                NamespacedKey("myplugin", "energy_port"),
-                Material.LIGHTNING_ROD
-            ))
-            
-            slot("input", 0, 1, 2)
-            slot("output", 4, 1, 2)
-            slot("energy", 2, 1, 0)
-            
-            customData("energy_capacity", 10000)
-            customData("processing_speed", 1.5)
-            
-            meta(
-                name = "工业机器",
-                description = "一个使用 Rebar 组件的工业机器",
-                author = "MonolithLib",
-                version = "1.0"
-            )
-        }
-        
-        MonolithAPI.getInstance().registerStructure(structure)
-    }
-}
-```
-
-### 示例 3: 结构检测与回调
-
-```kotlin
-class StructureManager : Listener {
-    
-    private val activeStructures = mutableMapOf<Location, ActiveStructure>()
-    
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    fun onBlockPlace(event: BlockPlaceEvent) {
-        val player = event.player
-        val block = event.block
-        
-        val api = MonolithAPI.getInstance()
-        
-        for (facing in Facing.entries) {
-            val matches = api.findMatchingStructures(block.location, facing)
-            
-            for ((structure, result) in matches) {
-                if (result.isComplete) {
-                    onStructureFormed(player, block.location, structure, facing)
-                    return
-                }
-            }
-        }
-    }
-    
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    fun onBlockBreak(event: BlockBreakEvent) {
-        val block = event.block
-        val active = activeStructures[block.location]
-        
-        if (active != null) {
-            onStructureBroken(event.player, active)
-        }
-    }
-    
-    private fun onStructureFormed(
-        player: Player,
-        location: Location,
-        structure: MonolithStructure,
-        facing: Facing
-    ) {
-        player.sendMessage("§a结构 ${structure.id} 已形成!")
-        
-        val active = ActiveStructure(
-            structure = structure,
-            location = location,
-            facing = facing,
-            createdAt = System.currentTimeMillis()
         )
         
-        activeStructures[location] = active
-        
-        val event = StructureFormEvent(active)
-        Bukkit.getPluginManager().callEvent(event)
-    }
-    
-    private fun onStructureBroken(player: Player, active: ActiveStructure) {
-        player.sendMessage("§c结构 ${active.structure.id} 已损坏!")
-        
-        activeStructures.remove(active.location)
-        
-        val event = StructureBreakEvent(active)
-        Bukkit.getPluginManager().callEvent(event)
+        // 3. 注册
+        MonolithAPI.registry.register(blueprint)
     }
 }
-
-data class ActiveStructure(
-    val structure: MonolithStructure,
-    val location: Location,
-    val facing: Facing,
-    val createdAt: Long
-)
-
-class StructureFormEvent(val structure: ActiveStructure) : Event() {
-    companion object {
-        private val handlers = HandlerList()
-        @JvmStatic fun getHandlerList() = handlers
-    }
-    override fun getHandlers() = handlers
-}
-
-class StructureBreakEvent(val structure: ActiveStructure) : Event() {
-    companion object {
-        private val handlers = HandlerList()
-        @JvmStatic fun getHandlerList() = handlers
-    }
-    override fun getHandlers() = handlers
-}
 ```
 
----
+### 3. 编写 Rebar 代码（坐标契约）
 
-## 翻译系统
-
-MonolithLib 使用 Rebar 的翻译系统，支持多语言。
-
-### 翻译文件结构
-
-```
-src/main/resources/lang/
-├── en.yml
-└── zh.yml
-```
-
-### 翻译键格式
-
-```yaml
-addon: "MonolithLib"
-
-item:
-  test_controller:
-    name: "Test Controller"
-    lore: "A test controller block"
-
-message:
-  preview:
-    started: "<green>Preview started: %structure_id%</green>"
-    stopped: "<green>Stopped %count% preview(s)</green>"
-```
-
-### 使用翻译
+去写你的 Rebar 机械类，**唯一的要求是：Rebar 代码里的偏移量，必须和 .mnb 文件里的相对坐标一模一样。**
 
 ```kotlin
-import top.mc506lw.monolith.common.I18n
-
-player.sendMessage(I18n.Message.Preview.started("my_structure", "NORTH"))
-player.sendMessage(I18n.Message.Structure.notFound("unknown_structure"))
+class BlastFurnaceMultiblock : RebarSimpleMultiblock {
+    override val components = mapOf(
+        // .mnb 里 (0,0,0) 是核心，这里就写 (0,0,0)
+        Pair(Vector3i(0, 0, 0), RebarMultiblockComponent(NamespacedKey("myplugin", "core"))),
+        
+        // .mnb 里 (1,0,0) 是朝西的熔炉，这里就精确匹配朝西的熔炉状态
+        Pair(Vector3i(1, 0, 0), VanillaBlockdataMultiblockComponent(
+            Material.FURNACE.createBlockData("[facing=west]")
+        ))
+    )
+    // ... 你的机器逻辑
+}
 ```
 
 ---
 
-## 性能优化建议
+## 🔌 Rebar 集成指南：魔法开关
 
-1. **使用 FlattenedBlock**: 避免使用三维数组存储方块，使用扁平化列表
-2. **缓存结构**: 结构注册后会被缓存，避免重复解析
-3. **异步加载**: 大型结构文件应在异步线程加载
-4. **按需检测**: 只在需要时检测结构，避免每 tick 检测
+当玩家使用 MonolithLib 的自动建造（未来的加农炮/打印机）时，MonolithLib 会自动处理 Rebar 的组装触发，**开发者完全不需要手动调用 Rebar 的检测 API**。
 
----
-
-## 常见问题
-
-### Q: 如何处理大型结构？
-
-A: 使用 `.mnb` 二进制格式，加载速度更快。对于特别大的结构，考虑分块加载。
-
-### Q: 如何支持自定义方块？
-
-A: 使用 `RebarPredicate` 或实现自定义 `Predicate`。
-
-### Q: 结构检测失败怎么办？
-
-A: 检查：
-1. 中心偏移是否正确
-2. 谓词是否匹配
-3. Facing 方向是否正确
+**底层原理（你不需要管，但知道有好处）：**
+1. MonolithLib 遍历 `.mnb`，用 Bukkit 原生 API 瞬间摆放完所有“外壳方块”（带精确状态）。
+2. MonolithLib 找到核心方块位置，最后一步调用 `BlockStorage.placeBlock()` 放置 Rebar 核心方块。
+3. Rebar 监听到放置事件，下一 tick 自动执行 `checkFormed()`，发现周围的方块状态完美匹配，机器瞬间启动！
 
 ---
 
-## 版本兼容性
+## 🎮 玩家使用方法
 
-| MonolithLib | Minecraft | Rebar |
-|-------------|-----------|-------|
-| 1.0.0       | 1.21.11    | 最新  |
+### 命令结构（清晰明确）
+
+MonolithLib 剔除了冗余的同义词命令，只提供最直觉的操作：
+
+- `/ml list` - 查看所有可用蓝图
+- `/ml info <蓝图ID>` - 查看蓝图详情与所需材料
+- `/ml preview <蓝图ID>` - 开启分层投影预览
+- `/ml build <蓝图ID>` - 执行自动建造（需消耗材料）
+
+### 投影引导体验（类似 投影MOD 的分层投影渲染）
+
+1. 玩家输入 `/ml preview blast_furnace`。
+2. 脚下出现第一层结构的半透明幽灵方块（无论结构多大，只渲染身边 7 格，极其流畅）。
+3. 玩家按照幽灵方块，手动把真实的熔炉、楼梯放置到对应位置。
+4. 本层放完后，幽灵方块自动切换到下一层。
+5. 放置到最后的核心方块时，MonolithLib 自动接管放置逻辑，**机器直接成型并启动**。
 
 ---
 
-## 联系与支持
+## 📁 项目结构
 
-- GitHub Issues: [提交问题](https://github.com/mc506lw/MonolithLib/issues)
+经过彻底的解耦重构，MonolithLib 现在拥有极高的内聚性和低耦合度：
+
+```
+MonolithLib/
+├── api/                      # 🚪 对外门面（按意图划分）
+│   ├── MonolithAPI.kt        #    统一入口
+│   └── BlueprintAPI.kt       #    蓝图操作接口
+│
+├── core/                     # 🧱 纯粹的基础设施（零业务逻辑）
+│   ├── model/                #    Shape、Blueprint 数据模型
+│   ├── io/formats/           #    各种格式的读写器
+│   ├── math/                 #    Matrix、Vector3i
+│   └── transform/            #    坐标变换、方块状态旋转
+│
+├── feature/                  # 🛠️ 业务功能（可插拔）
+│   ├── preview/              #    Ghost 渲染器、实体池
+│   ├── builder/              #    建造执行器
+│   ├── material/             #    材料统计
+│   └── rebar/                #    Rebar 适配器 (仅处理核心放置)
+│
+├── validation/               # 🛡️ 验证层
+│   ├── ValidationEngine.kt   #    验证引擎
+│   └── predicate/            #    严格/松散/Rebar/旋转匹配器
+│
+├── lifecycle/                # ♻️ 生命周期管理
+│   ├── BlueprintLifecycle.kt #    蓝图状态机
+│   └── ChunkHandler.kt       #    区块加载卸载处理
+│
+└── internal/                 # ⚙️ 内部实现
+    ├── command/              #    命令与 Tab 补全
+    ├── listener/             #    事件监听
+    └── mixin/                #    底层注入
+```
+
+---
+
+## 🗺️ 路线图 (未来计划)
+
+MonolithLib 的最终形态是成为 Rebar 生态中不可或缺的“现代化建造基础设施”：
+
+- [ ] **投影打印机**：就是投影打印机。
+- [ ] **蓝图加农炮**：类似机械动力，搭好加农炮多方块，放入材料和图纸，拉下开关轻松建造巨型机器。
+- [ ] **图形化蓝图 GUI**：分类浏览、材料预览、一键预览的图形界面。
+- [ ] **蓝图分享网络**：支持从在线仓库直接下载 `.mnb` 蓝图。
+
+---
+
+## 🛠️ 构建
+
+```bash
+git clone https://github.com/mc506lw/MonolithLib.git
+cd MonolithLib
+./gradlew build
+```
+
+---
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](./LICENSE) 文件。
+
+<div align="center">
+  <p>如果 MonolithLib 拯救了你写 Rebar 坐标的时间，请给一个 ⭐️ 支持一下！</p>
+</div>

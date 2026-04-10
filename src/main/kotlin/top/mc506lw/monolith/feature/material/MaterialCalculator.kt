@@ -3,16 +3,16 @@ package top.mc506lw.monolith.feature.material
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
-import top.mc506lw.monolith.core.structure.FlattenedBlock
+import top.mc506lw.monolith.core.model.BlockEntry
 import java.util.concurrent.ConcurrentHashMap
 
 class MaterialCalculator {
     
-    fun calculateRequirements(entries: List<FlattenedBlock>): Map<Material, MaterialRequirement> {
+    fun calculateRequirements(entries: List<BlockEntry>): Map<Material, MaterialRequirement> {
         val materialCounts = ConcurrentHashMap<Material, Int>()
         
         for (entry in entries) {
-            val material = entry.previewBlockData?.material ?: continue
+            val material = entry.blockData?.material ?: continue
             
             materialCounts.merge(material, 1) { old, _ -> old + 1 }
         }

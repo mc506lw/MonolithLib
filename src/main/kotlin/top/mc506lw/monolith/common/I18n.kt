@@ -160,10 +160,9 @@ object I18n {
                 val title = translatable("message.command.help.title")
                 val reload = translatable("message.command.help.reload")
                 val list = translatable("message.command.help.list")
-                val files = translatable("message.command.help.files")
-                val preview = translatable("message.command.help.preview")
-                val construct = translatable("message.command.help.construct")
                 val info = translatable("message.command.help.info")
+                val preview = translatable("message.command.help.preview")
+                val build = translatable("message.command.help.build")
                 val usage = translatable("message.command.help.usage")
                 val step1 = translatable("message.command.help.step1")
                 val step2 = translatable("message.command.help.step2")
@@ -272,6 +271,32 @@ object I18n {
                     "message.command.info.rebar_integration",
                     arg("status", status)
                 )
+                fun blueprintNotFound(id: String) = translatable(
+                    "message.command.info.blueprint_not_found",
+                    arg("id", id)
+                )
+                fun blueprintTitle(id: String) = translatable(
+                    "message.command.info.blueprint_title",
+                    arg("id", id)
+                )
+                fun size(x: Int, y: Int, z: Int) = translatable(
+                    "message.command.info.size",
+                    arg("x", x),
+                    arg("y", y),
+                    arg("z", z)
+                )
+                fun blockCount(count: Int) = translatable(
+                    "message.command.info.block_count",
+                    arg("count", count)
+                )
+                fun name(name: String) = translatable(
+                    "message.command.info.name",
+                    arg("name", name)
+                )
+                fun description(description: String) = translatable(
+                    "message.command.info.description",
+                    arg("description", description)
+                )
             }
             
             fun usage(usage: String) = translatable(
@@ -280,7 +305,8 @@ object I18n {
             )
             val pointAtController = translatable("message.command.point_at_controller")
             val controllerMustBeRebar = translatable("message.command.controller_must_be_rebar")
-            val constructFailed = translatable("message.command.construct_failed")
+            val buildCancelled = translatable("message.command.build_cancelled")
+            val buildFailed = translatable("message.command.build_failed")
         }
         
         object Test {

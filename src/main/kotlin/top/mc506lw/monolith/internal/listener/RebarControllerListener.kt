@@ -7,7 +7,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockPlaceEvent
 import top.mc506lw.monolith.api.MonolithAPI
 import top.mc506lw.monolith.common.I18n
-import top.mc506lw.monolith.core.structure.StructureRegistry
+import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.transform.Facing
 
 object RebarControllerListener : Listener {
@@ -19,15 +19,16 @@ object RebarControllerListener : Listener {
         
         val rebarBlock = BlockStorage.get(block) ?: return
         
-        val structures = StructureRegistry.getInstance().getByControllerKey(rebarBlock.key)
-        if (structures.isEmpty()) return
+        val api = MonolithAPI.getInstance()
+        val blueprints = api.registry.getBlueprintsByControllerKey(rebarBlock.key)
+        if (blueprints.isEmpty()) return
         
-        val structure = structures.first()
+        val blueprint = blueprints.first()
         
         player.sendMessage(I18n.Message.Structure.controllerDetected(rebarBlock.key.toString()))
-        player.sendMessage(I18n.Message.Structure.associatedStructure(structure.id))
+        player.sendMessage(I18n.Message.Structure.associatedStructure(blueprint.id))
         
-        if (structure.flattenedBlocks.isEmpty()) {
+        if (blueprint.shape.blocks.isEmpty()) {
             player.sendMessage(I18n.Message.Structure.noBlocks)
             player.sendMessage(I18n.Message.Structure.addBlocksHint)
             return
@@ -35,11 +36,11 @@ object RebarControllerListener : Listener {
         
         val facing = detectFacingFromPlayer(player)
         
-        val session = MonolithAPI.getInstance().startPreview(player, block.location, structure.id, facing)
+        val session = api.preview.start(player, blueprint.id, block.location, facing)
         if (session != null) {
-            player.sendMessage(I18n.Message.Preview.started(structure.id, facing.name))
+            player.sendMessage(I18n.Message.Preview.started(blueprint.id, facing.name))
             player.sendMessage(I18n.Message.Preview.currentLayer(session.currentLayer, session.maxLayer))
-            player.sendMessage(I18n.Message.Structure.blockCount(structure.flattenedBlocks.size))
+            player.sendMessage(I18n.Message.Structure.blockCount(blueprint.shape.blocks.size))
         }
     }
     

@@ -3,13 +3,13 @@ package top.mc506lw.monolith.feature.material
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.plugin.java.JavaPlugin
-import top.mc506lw.monolith.core.structure.FlattenedBlock
+import top.mc506lw.monolith.core.model.BlockEntry
 
 class MaterialModule(plugin: JavaPlugin) {
     private val calculator = MaterialCalculator()
     private val cache = mutableMapOf<String, MaterialStats>()
     
-    fun calculateForStructure(structureId: String, entries: List<FlattenedBlock>): Map<Material, MaterialRequirement> {
+    fun calculateForStructure(structureId: String, entries: List<BlockEntry>): Map<Material, MaterialRequirement> {
         return calculator.calculateRequirements(entries)
     }
     

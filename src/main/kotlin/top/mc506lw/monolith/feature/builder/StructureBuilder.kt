@@ -8,8 +8,10 @@ import org.bukkit.block.data.BlockData
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
 import top.mc506lw.monolith.core.math.Vector3i
-import top.mc506lw.monolith.core.predicate.RotatedPredicate
-import top.mc506lw.monolith.core.structure.MonolithStructure
+import top.mc506lw.monolith.core.model.Blueprint
+import top.mc506lw.monolith.validation.predicate.Predicate
+import top.mc506lw.monolith.validation.predicate.Predicates
+import top.mc506lw.monolith.validation.predicate.RotatedPredicate
 import top.mc506lw.monolith.core.transform.BlockStateRotator
 import top.mc506lw.monolith.core.transform.CoordinateTransform
 import top.mc506lw.monolith.core.transform.Facing
@@ -17,7 +19,7 @@ import top.mc506lw.rebar.MonolithLib
 
 class StructureBuilder(
     private val player: Player,
-    private val structure: MonolithStructure,
+    private val blueprint: Blueprint,
     private val controllerLocation: Location,
     private val facing: Facing,
     private val isSurvival: Boolean
@@ -31,21 +33,22 @@ class StructureBuilder(
     val blocksToPlace: List<BuildEntry> by lazy {
         val entries = mutableListOf<BuildEntry>()
         
-        for (block in structure.flattenedBlocks) {
+        for (block in blueprint.shape.blocks) {
             val worldPos = transform.toWorldPosition(
                 controllerPos = Vector3i(
                     controllerLocation.blockX,
                     controllerLocation.blockY,
                     controllerLocation.blockZ
                 ),
-                relativePos = block.relativePosition,
-                centerOffset = structure.centerOffset
+                relativePos = block.position,
+                centerOffset = blueprint.meta.controllerOffset
             )
             
-            val originalPreview = block.previewBlockData ?: Material.STONE.createBlockData()
+            val originalPreview = block.blockData ?: Material.STONE.createBlockData()
             val rotatedBlockData = BlockStateRotator.rotate(originalPreview, rotationSteps)
             
-            val rotatedPredicate = RotatedPredicate(block.predicate, rotationSteps)
+            val predicate = Predicates.strict(block.blockData)
+            val rotatedPredicate = RotatedPredicate(predicate, rotationSteps)
             
             entries.add(BuildEntry(
                 worldPos = worldPos,
@@ -199,7 +202,7 @@ class StructureBuilder(
         
         buildTask?.runTaskTimer(MonolithLib.instance, 1L, 1L)
         
-        player.sendMessage("§a[MonolithLib] 开始建造: ${structure.id}")
+        player.sendMessage("§a[MonolithLib] 开始建造: ${blueprint.id}")
         player.sendMessage("§7总共 ${blocksToPlace.size} 个方块，每次建造 500 个")
         
         return true
@@ -247,7 +250,7 @@ class StructureBuilder(
         isBuilding = false
         
         player.sendMessage("§a[MonolithLib] 建造完成!")
-        player.sendMessage("§7结构: ${structure.id}")
+        player.sendMessage("§7结构: ${blueprint.id}")
         
         controllerLocation.world?.playSound(
             controllerLocation,
@@ -261,7 +264,7 @@ class StructureBuilder(
         val worldPos: Vector3i,
         val blockData: BlockData,
         val material: Material,
-        val predicate: top.mc506lw.monolith.core.predicate.Predicate
+        val predicate: Predicate
     )
     
     sealed class BuildCheckResult {

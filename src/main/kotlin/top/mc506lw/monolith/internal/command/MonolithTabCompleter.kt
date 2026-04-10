@@ -3,6 +3,7 @@ package top.mc506lw.monolith.internal.command
 import org.bukkit.command.Command
 import org.bukkit.command.CommandSender
 import org.bukkit.command.TabCompleter
+import top.mc506lw.monolith.api.MonolithAPI
 
 object MonolithTabCompleter : TabCompleter {
     
@@ -26,20 +27,26 @@ object MonolithTabCompleter : TabCompleter {
     
     private fun getSubCommands(prefix: String): List<String> {
         val commands = listOf(
-            "reload", "list", "files", "info",
-            "preview", "construct"
+            "reload", "list", "info",
+            "preview", "build"
         )
         return commands.filter { it.startsWith(prefix.lowercase()) }
     }
     
     private fun getSecondArg(subCommand: String, prefix: String): List<String> {
         return when (subCommand.lowercase()) {
-            "preview", "construct" -> {
+            "preview", "build" -> {
                 if ("cancel".startsWith(prefix.lowercase())) {
                     listOf("cancel")
                 } else {
                     emptyList()
                 }
+            }
+            "info" -> {
+                val api = MonolithAPI.getInstance()
+                api.registry.getAllBlueprints().keys
+                    .filter { it.startsWith(prefix.lowercase()) }
+                    .take(10)
             }
             else -> emptyList()
         }

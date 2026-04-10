@@ -4,10 +4,10 @@ import org.bukkit.Location
 import org.bukkit.block.Block
 import org.bukkit.event.Event
 import org.bukkit.event.HandlerList
-import top.mc506lw.monolith.core.structure.MonolithStructure
+import top.mc506lw.monolith.core.model.Blueprint
 
 class StructureFormEvent(
-    val structure: MonolithStructure,
+    val blueprint: Blueprint,
     val controllerLocation: Location,
     val componentBlocks: Map<String, Block>
 ) : Event() {
@@ -23,7 +23,7 @@ class StructureFormEvent(
 }
 
 class StructureBreakEvent(
-    val structure: MonolithStructure,
+    val blueprint: Blueprint,
     val controllerLocation: Location,
     val brokenBlock: Block,
     val isController: Boolean
@@ -39,8 +39,8 @@ class StructureBreakEvent(
     }
 }
 
-class StructureBlockPlaceEvent(
-    val structure: MonolithStructure,
+class BlueprintBlockPlaceEvent(
+    val blueprint: Blueprint,
     val controllerLocation: Location,
     val block: Block,
     val slotId: String?,
@@ -57,8 +57,8 @@ class StructureBlockPlaceEvent(
     }
 }
 
-class StructureBlockBreakEvent(
-    val structure: MonolithStructure,
+class BlueprintBlockBreakEvent(
+    val blueprint: Blueprint,
     val controllerLocation: Location,
     val block: Block,
     val slotId: String?
@@ -74,8 +74,8 @@ class StructureBlockBreakEvent(
     }
 }
 
-class StructureLoadEvent(
-    val structure: MonolithStructure,
+class BlueprintLoadEvent(
+    val blueprint: Blueprint,
     val source: String
 ) : Event() {
     
@@ -89,7 +89,7 @@ class StructureLoadEvent(
     }
 }
 
-class StructureUnloadEvent(
+class BlueprintUnloadEvent(
     val structureId: String
 ) : Event() {
     
