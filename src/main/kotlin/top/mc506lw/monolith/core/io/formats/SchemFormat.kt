@@ -8,6 +8,7 @@ import top.mc506lw.monolith.core.io.getNbtByteArray
 import top.mc506lw.monolith.core.io.getNbtCompound
 import top.mc506lw.monolith.core.io.getNbtShort
 import top.mc506lw.monolith.core.math.Vector3i
+import java.util.logging.Level
 import top.mc506lw.monolith.core.model.BlockEntry
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.model.BlueprintMeta
@@ -21,11 +22,16 @@ object SchemFormat : StructureSerializer {
     override val fileExtension: String = ".schem"
     
     fun load(file: File): Blueprint? {
+        return load(file, file.nameWithoutExtension)
+    }
+    
+    fun load(file: File, blueprintId: String): Blueprint? {
         return try {
             file.inputStream().use { input ->
-                deserialize(input)
+                deserialize(input, blueprintId)
             }
         } catch (e: Exception) {
+            Bukkit.getLogger().log(Level.WARNING, "[MonolithLib] SchemFormat 加载失败: ${file.absolutePath}", e)
             null
         }
     }
@@ -34,7 +40,11 @@ object SchemFormat : StructureSerializer {
         throw UnsupportedOperationException("暂不支持导出为 .schem 格式")
     }
     
-    override fun deserialize(input: InputStream): Blueprint {
+    override fun deserialize(input: InputStream): Blueprint? {
+        return deserialize(input, "schematic")
+    }
+    
+    fun deserialize(input: InputStream, blueprintId: String = "schematic"): Blueprint {
         val gzipInput = GZIPInputStream(input)
         val dataInput = DataInputStream(gzipInput)
         
@@ -91,10 +101,10 @@ object SchemFormat : StructureSerializer {
         val shape = Shape(allBlocks)
         
         return Blueprint(
-            id = "schematic",
+            id = blueprintId,
             shape = shape,
             meta = BlueprintMeta(
-                displayName = "Schematic"
+                displayName = blueprintId
             )
         )
     }

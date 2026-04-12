@@ -10,6 +10,7 @@ import top.mc506lw.monolith.core.model.BlueprintMeta
 import top.mc506lw.monolith.core.model.Shape
 import top.mc506lw.monolith.validation.predicate.*
 import java.io.*
+import java.util.logging.Level
 
 object BinaryFormat : StructureSerializer {
     
@@ -32,6 +33,7 @@ object BinaryFormat : StructureSerializer {
                 deserialize(input)
             }
         } catch (e: Exception) {
+            Bukkit.getLogger().log(Level.WARNING, "[MonolithLib] BinaryFormat 加载失败: ${file.absolutePath}", e)
             null
         }
     }
@@ -158,34 +160,57 @@ object BinaryFormat : StructureSerializer {
             }
             
             val blockCount = dis.readInt()
+            Bukkit.getLogger().info("[MonolithLib] BinaryFormat 诊断: version=$version, blockCount=$blockCount, id=$id")
             val blocks = mutableListOf<BlockEntry>()
+            var skippedBlocks = 0
             
-            repeat(blockCount) {
-                val x = dis.readShort().toInt()
-                val y = dis.readShort().toInt()
-                val z = dis.readShort().toInt()
-                
-                val predicate = if (version >= 3) {
-                    readPredicate(dis)
-                } else {
+            repeat(blockCount) { blockIndex ->
+                var x = 0
+                var y = 0
+                var z = 0
+                try {
+                    x = dis.readShort().toInt()
+                    y = dis.readShort().toInt()
+                    z = dis.readShort().toInt()
+                    
+                    val predicate = if (version >= 3) {
+                        readPredicate(dis)
+                    } else {
+                        val blockDataStr = readString(dis)
+                        val blockData = if (blockDataStr.isNotEmpty()) {
+                            try { Bukkit.createBlockData(blockDataStr) } catch (e: Exception) { null }
+                        } else null
+                        if (blockData != null) StrictPredicate(blockData) else AirPredicate
+                    }
+                    
                     val blockDataStr = readString(dis)
                     val blockData = if (blockDataStr.isNotEmpty()) {
                         try { Bukkit.createBlockData(blockDataStr) } catch (e: Exception) { null }
-                    } else null
-                    if (blockData != null) StrictPredicate(blockData) else AirPredicate
+                    } else predicate.previewBlockData
+                    
+                    if (blockData != null) {
+                        blocks.add(BlockEntry(
+                            position = Vector3i(x, y, z),
+                            blockData = blockData
+                        ))
+                    } else {
+                        skippedBlocks++
+                    }
+                } catch (e: EOFException) {
+                    if (blockIndex == 0) {
+                        Bukkit.getLogger().warning("[MonolithLib] 第一个方块读取失败 (EOF): version=$version, 位置已读取: ($x,$y,$z)")
+                    }
+                    skippedBlocks++
+                } catch (e: Exception) {
+                    if (blockIndex == 0) {
+                        Bukkit.getLogger().warning("[MonolithLib] 第一个方块读取失败: ${e.message}")
+                    }
+                    skippedBlocks++
                 }
-                
-                val blockDataStr = readString(dis)
-                val blockData = if (blockDataStr.isNotEmpty()) {
-                    try { Bukkit.createBlockData(blockDataStr) } catch (e: Exception) { null }
-                } else predicate.previewBlockData
-                
-                if (blockData != null) {
-                    blocks.add(BlockEntry(
-                        position = Vector3i(x, y, z),
-                        blockData = blockData
-                    ))
-                }
+            }
+            
+            if (skippedBlocks > 0) {
+                Bukkit.getLogger().warning("[MonolithLib] 跳过 $skippedBlocks 个损坏的方块数据 (文件版本: $version)")
             }
             
             val shape = Shape(blocks)

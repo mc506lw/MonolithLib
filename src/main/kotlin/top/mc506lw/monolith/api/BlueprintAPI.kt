@@ -19,6 +19,7 @@ import top.mc506lw.monolith.feature.material.MaterialStats
 import top.mc506lw.rebar.MonolithLib
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
+import java.util.logging.Logger
 
 class BlueprintAPI : MonolithAPI {
 
@@ -97,7 +98,7 @@ class BlueprintAPI : MonolithAPI {
             registry.registerBlueprint(blueprint)
         }
 
-        println("[MonolithLib] 重新加载了 ${blueprints.size} 个蓝图")
+        Logger.getLogger("MonolithLib").info("重新加载了 ${blueprints.size} 个蓝图")
     }
 
     internal fun getLegacyPreviewModule(): PreviewModule = previewModule

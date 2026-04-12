@@ -2,6 +2,7 @@ package top.mc506lw.rebar
 
 import io.github.pylonmc.rebar.addon.RebarAddon
 import io.github.pylonmc.rebar.block.BlockStorage
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
@@ -21,10 +22,13 @@ import top.mc506lw.monolith.feature.preview.PreviewModule
 import top.mc506lw.monolith.feature.preview.StructurePreviewManager
 import top.mc506lw.monolith.feature.builder.StructureBuildManager
 import top.mc506lw.monolith.feature.rebar.RebarModule
+import top.mc506lw.monolith.feature.buildsite.BuildSiteManager
+import top.mc506lw.monolith.feature.buildsite.BuildSiteListener
 import top.mc506lw.monolith.internal.listener.MonolithBlockListener
 import top.mc506lw.monolith.internal.listener.RebarControllerListener
 import top.mc506lw.monolith.internal.scheduler.TickScheduler
 import top.mc506lw.monolith.test.TestModule
+import top.mc506lw.monolith.feature.machine.BlueprintTableMachine
 import java.io.File
 import java.util.Locale
 
@@ -48,6 +52,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
     private lateinit var previewModule: PreviewModule
     private lateinit var materialModule: MaterialModule
     private lateinit var rebarModule: RebarModule
+    private lateinit var buildSiteListener: BuildSiteListener
     private lateinit var blockListener: MonolithBlockListener
     private lateinit var chunkHandler: ChunkHandler
     
@@ -70,9 +75,11 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         initializeCore()
         initializeModules()
         loadStructures()
+        initBuildSiteSystem()
         registerListeners()
         registerCommands()
         initTestModule()
+        initMachines()
         
         log("初始化完成! 版本: ${pluginMeta.version}")
     }
@@ -85,6 +92,11 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         materialModule.clearCache()
         StructurePreviewManager.cleanup()
         StructureBuildManager.cleanup()
+        BuildSiteManager.stopTracking()
+        BuildSiteManager.cleanup()
+        top.mc506lw.monolith.feature.buildsite.EasyBuildManager.cleanup()
+        top.mc506lw.monolith.feature.buildsite.PrinterManager.cleanup()
+        top.mc506lw.monolith.feature.buildsite.LitematicaModeManager.cleanup()
         
         log("已关闭")
     }
@@ -99,6 +111,8 @@ class MonolithLib : JavaPlugin(), RebarAddon {
             args[0].equals("info", ignoreCase = true) -> handleInfo(sender, args)
             args[0].equals("preview", ignoreCase = true) -> handlePreview(sender, args)
             args[0].equals("build", ignoreCase = true) -> handleBuild(sender, args)
+            args[0].equals("blueprint", ignoreCase = true) -> handleBlueprint(sender, args)
+            args[0].equals("litematica", ignoreCase = true) -> handleLitematica(sender, args)
             else -> sendHelp(sender)
         }
         
@@ -121,10 +135,29 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         rebarModule = RebarModule(this)
     }
 
+    private fun initBuildSiteSystem() {
+        buildSiteListener = BuildSiteListener()
+        BuildSiteManager.init(this)
+        
+        val siteCount = BuildSiteManager.getAllActiveSites().size
+        if (siteCount > 0) {
+            log("恢复 $siteCount 个存档工地")
+            top.mc506lw.monolith.feature.buildsite.EasyBuildManager.rebuildIndex()
+        }
+        
+        Bukkit.getScheduler().runTaskTimer(this, Runnable {
+            for (player in Bukkit.getOnlinePlayers()) {
+                top.mc506lw.monolith.feature.buildsite.LitematicaModeManager.onPlayerTick(player)
+            }
+        }, 20L, 20L)
+    }
+
     private fun registerListeners() {
         server.pluginManager.registerEvents(blockListener, this)
         server.pluginManager.registerEvents(chunkHandler, this)
         server.pluginManager.registerEvents(RebarControllerListener, this)
+        server.pluginManager.registerEvents(buildSiteListener, this)
+        server.pluginManager.registerEvents(top.mc506lw.monolith.feature.buildsite.EasyBuildManager, this)
     }
 
     private fun registerCommands() {
@@ -138,6 +171,14 @@ class MonolithLib : JavaPlugin(), RebarAddon {
             TestModule.init()
         } catch (e: Exception) {
             logWarning("测试模块初始化失败: ${e.message}")
+        }
+    }
+
+    private fun initMachines() {
+        try {
+            BlueprintTableMachine.registerAll()
+        } catch (e: Exception) {
+            logWarning("机器模块初始化失败: ${e.message}")
         }
     }
 
@@ -275,6 +316,43 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         }
     }
 
+    private fun handleBlueprint(sender: CommandSender, args: Array<out String>) {
+        if (sender !is Player) {
+            sender.sendMessage(I18n.Message.Command.playerOnly)
+            return
+        }
+
+        if (!sender.hasPermission(Constants.Permissions.BLUEPRINT)) {
+            sender.sendMessage(I18n.Message.Command.permissionDenied)
+            return
+        }
+
+        if (args.size < 2) {
+            sender.sendMessage(I18n.Message.Command.Blueprint.noId)
+            sender.sendMessage(I18n.Message.Command.Blueprint.hint)
+            return
+        }
+
+        val blueprintId = args[1]
+        val blueprint = api.registry.getBlueprint(blueprintId)
+
+        if (blueprint == null) {
+            sender.sendMessage(I18n.Message.Command.Blueprint.notFound(blueprintId))
+            return
+        }
+
+        val item = top.mc506lw.monolith.feature.buildsite.BlueprintItem.create(blueprintId)
+
+        val leftover = sender.inventory.addItem(item)
+        if (leftover.isNotEmpty()) {
+            sender.sendMessage(I18n.Message.Command.Blueprint.inventoryFull)
+            sender.world.dropItemNaturally(sender.location, item)
+        }
+
+        sender.sendMessage(I18n.Message.Command.Blueprint.given(blueprintId))
+        sender.sendMessage("\u00a77右键空气方块即可创建工地")
+    }
+
     private fun handleList(sender: CommandSender) {
         val blueprints = api.registry.getAllBlueprints()
         
@@ -374,6 +452,74 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         sender.sendMessage(I18n.Message.Command.Info.rebarIntegration(rebarStatus))
     }
 
+    private fun handleLitematica(sender: CommandSender, args: Array<out String>) {
+        if (sender !is Player) {
+            sender.sendMessage(I18n.Message.Command.playerOnly)
+            return
+        }
+        
+        if (args.size < 2) {
+            sender.sendMessage(I18n.Message.Litematica.usage)
+            return
+        }
+        
+        when {
+            args[1].equals("easybuild", ignoreCase = true) -> {
+                if (!sender.hasPermission("monolith.easybuild")) {
+                    sender.sendMessage(I18n.Message.Command.permissionDenied)
+                    return
+                }
+                
+                val result = top.mc506lw.monolith.feature.buildsite.EasyBuildManager.toggle(sender)
+                
+                when (result) {
+                    true -> {
+                        sender.sendMessage(I18n.Message.Litematica.easybuildEnabled)
+                        sender.sendMessage("§7对着幽灵方块右键可自动放置匹配的方块")
+                        sender.sendMessage("§7创造模式下无需任何材料")
+                        sender.sendMessage("§7离开工地范围1分钟后自动关闭")
+                    }
+                    false -> {
+                        sender.sendMessage(I18n.Message.Litematica.easybuildDisabled)
+                    }
+                    null -> {
+                        sender.sendMessage(I18n.Message.Litematica.noSiteNearby)
+                    }
+                }
+            }
+            
+            args[1].equals("printer", ignoreCase = true) -> {
+                if (!sender.hasPermission("monolith.printer")) {
+                    sender.sendMessage(I18n.Message.Command.permissionDenied)
+                    return
+                }
+                
+                val result = top.mc506lw.monolith.feature.buildsite.PrinterManager.toggle(sender)
+                
+                when (result) {
+                    true -> {
+                        top.mc506lw.monolith.feature.buildsite.PrinterManager.startPrinter(sender)
+                        sender.sendMessage(I18n.Message.Litematica.printerEnabled)
+                        sender.sendMessage("§7自动放置周身4格范围内的幽灵方块")
+                        sender.sendMessage("§7创造模式下无需任何材料")
+                        sender.sendMessage("§7离开工地范围1分钟后自动关闭")
+                    }
+                    false -> {
+                        top.mc506lw.monolith.feature.buildsite.PrinterManager.stopPrinter(sender)
+                        sender.sendMessage(I18n.Message.Litematica.printerDisabled)
+                    }
+                    null -> {
+                        sender.sendMessage(I18n.Message.Litematica.printerNoSite)
+                    }
+                }
+            }
+            
+            else -> {
+                sender.sendMessage(I18n.Message.Litematica.usage)
+            }
+        }
+    }
+
     private fun sendHelp(sender: CommandSender) {
         sender.sendMessage(I18n.Message.Command.Help.title)
         sender.sendMessage(I18n.Message.Command.Help.reload)
@@ -381,6 +527,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         sender.sendMessage(I18n.Message.Command.Help.info)
         sender.sendMessage(I18n.Message.Command.Help.preview)
         sender.sendMessage(I18n.Message.Command.Help.build)
+        sender.sendMessage(I18n.Message.Command.Help.blueprint)
         sender.sendMessage(I18n.Message.Command.Help.usage)
         sender.sendMessage(I18n.Message.Command.Help.step1)
         sender.sendMessage(I18n.Message.Command.Help.step2)

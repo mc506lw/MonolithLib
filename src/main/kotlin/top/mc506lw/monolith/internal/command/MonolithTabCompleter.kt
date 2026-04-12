@@ -28,7 +28,7 @@ object MonolithTabCompleter : TabCompleter {
     private fun getSubCommands(prefix: String): List<String> {
         val commands = listOf(
             "reload", "list", "info",
-            "preview", "build"
+            "preview", "build", "blueprint", "litematica"
         )
         return commands.filter { it.startsWith(prefix.lowercase()) }
     }
@@ -42,7 +42,10 @@ object MonolithTabCompleter : TabCompleter {
                     emptyList()
                 }
             }
-            "info" -> {
+            "litematica" -> {
+                listOf("easybuild", "printer").filter { it.startsWith(prefix.lowercase()) }
+            }
+            "info", "blueprint" -> {
                 val api = MonolithAPI.getInstance()
                 api.registry.getAllBlueprints().keys
                     .filter { it.startsWith(prefix.lowercase()) }

@@ -16,6 +16,7 @@ import top.mc506lw.monolith.core.model.Shape
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.transform.Facing
 import top.mc506lw.monolith.test.blocks.TestBlocks
+import top.mc506lw.monolith.test.blocks.FurnaceCoreBlock
 
 object TestModule : CommandExecutor, TabCompleter {
     
@@ -100,27 +101,36 @@ object TestModule : CommandExecutor, TabCompleter {
         api.registry.registerBlueprint(rebarBlueprint)
         
         val stone = Bukkit.createBlockData("minecraft:stone")
+        val stairNorth = Bukkit.createBlockData("minecraft:oak_stairs[facing=north]")
+        val stairEast = Bukkit.createBlockData("minecraft:oak_stairs[facing=east]")
+        val stairSouth = Bukkit.createBlockData("minecraft:oak_stairs[facing=south]")
+        val stairWest = Bukkit.createBlockData("minecraft:oak_stairs[facing=west]")
+        val furnace = Bukkit.createBlockData("minecraft:furnace[facing=north]")
         val looseBlocks = mutableListOf<BlockEntry>()
         
-        for (x in 0..2) {
-            for (z in 0..2) {
-                looseBlocks.add(BlockEntry(Vector3i(x, 0, z), stone))
-            }
-        }
+        looseBlocks.add(BlockEntry(Vector3i(0, 0, 0), stone))
+        looseBlocks.add(BlockEntry(Vector3i(1, 0, 0), stairNorth))
+        looseBlocks.add(BlockEntry(Vector3i(2, 0, 0), stone))
+        
+        looseBlocks.add(BlockEntry(Vector3i(0, 0, 1), stairEast))
+        looseBlocks.add(BlockEntry(Vector3i(1, 0, 1), furnace))
+        looseBlocks.add(BlockEntry(Vector3i(2, 0, 1), stairWest))
+        
+        looseBlocks.add(BlockEntry(Vector3i(0, 0, 2), stone))
+        looseBlocks.add(BlockEntry(Vector3i(1, 0, 2), stairSouth))
+        looseBlocks.add(BlockEntry(Vector3i(2, 0, 2), stone))
         
         val looseShape = Shape(looseBlocks)
         
-        val looseBlueprint = Blueprint(
-            id = "test_loose_furnace",
-            shape = looseShape,
-            meta = BlueprintMeta(
-                displayName = "宽松熔炉",
-                description = "测试宽松匹配",
-                author = "MonolithLib",
-                version = "1.0",
-                controllerOffset = Vector3i(1, 0, 1)
-            )
-        )
+        val looseBlueprint = Blueprint.builder("test_loose_furnace")
+            .shape(looseShape)
+            .displayName("宽松熔炉")
+            .description("测试宽松匹配")
+            .author("MonolithLib")
+            .version("1.0")
+            .controllerOffset(Vector3i(1, 0, 1))
+            .controllerRebar(FurnaceCoreBlock.KEY)
+            .build()
         
         api.registry.registerBlueprint(looseBlueprint)
         

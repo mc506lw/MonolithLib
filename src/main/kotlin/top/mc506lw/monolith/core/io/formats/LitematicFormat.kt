@@ -8,6 +8,7 @@ import top.mc506lw.monolith.core.io.StructureSerializer
 import top.mc506lw.monolith.core.io.getNbtCompound
 import top.mc506lw.monolith.core.io.getNbtInt
 import top.mc506lw.monolith.core.io.getNbtList
+import java.util.logging.Level
 import top.mc506lw.monolith.core.io.getNbtLongArray
 import top.mc506lw.monolith.core.io.getNbtString
 import top.mc506lw.monolith.core.math.Vector3i
@@ -24,11 +25,16 @@ object LitematicFormat : StructureSerializer {
     override val fileExtension: String = ".litematic"
     
     fun load(file: File): Blueprint? {
+        return load(file, file.nameWithoutExtension)
+    }
+    
+    fun load(file: File, blueprintId: String): Blueprint? {
         return try {
             file.inputStream().use { input ->
-                deserialize(input)
+                deserialize(input, blueprintId)
             }
         } catch (e: Exception) {
+            Bukkit.getLogger().log(Level.WARNING, "[MonolithLib] LitematicFormat 加载失败: ${file.absolutePath}", e)
             null
         }
     }
@@ -37,16 +43,24 @@ object LitematicFormat : StructureSerializer {
         throw UnsupportedOperationException("暂不支持导出为 .litematic 格式")
     }
     
-    override fun deserialize(input: InputStream): Blueprint {
+    override fun deserialize(input: InputStream): Blueprint? {
+        return deserialize(input, null)
+    }
+    
+    fun deserialize(input: InputStream, blueprintId: String? = null): Blueprint {
         val gzipInput = GZIPInputStream(input)
         val dataInput = DataInputStream(gzipInput)
         
         val root = NbtReader(dataInput).readRoot()
+        Bukkit.getLogger().info("[MonolithLib] LitematicFormat 根标签: ${root.keys}")
         
         val metadata = root.getNbtCompound("Metadata") ?: emptyMap()
         val schematicName = metadata.getNbtString("Name") ?: "unnamed"
         
+        val finalId = blueprintId ?: schematicName
+        
         val regions = root.getNbtCompound("Regions") ?: emptyMap()
+        Bukkit.getLogger().info("[MonolithLib] LitematicFormat: name=$schematicName, regions=${regions.keys}")
         
         val allBlocks = mutableListOf<BlockEntry>()
         
@@ -58,7 +72,8 @@ object LitematicFormat : StructureSerializer {
         var maxZ = Int.MIN_VALUE
         
         for ((regionName, regionValue) in regions) {
-            val region = regionValue as? Map<String, Any> ?: continue
+            val region = (regionValue as? NbtCompound)?.value ?: continue
+            Bukkit.getLogger().info("[MonolithLib] LitematicFormat 区域 '$regionName' keys: ${region.keys}")
             
             val position = region.getNbtCompound("Position") ?: continue
             val size = region.getNbtCompound("Size") ?: continue
@@ -72,6 +87,8 @@ object LitematicFormat : StructureSerializer {
             var sizeX = size.getNbtInt("x") ?: 1
             var sizeY = size.getNbtInt("y") ?: 1
             var sizeZ = size.getNbtInt("z") ?: 1
+            
+            Bukkit.getLogger().info("[MonolithLib] LitematicFormat 区域 '$regionName': pos=($posX,$posY,$posZ), size=($sizeX,$sizeY,$sizeZ), palette=${paletteList.size}, blockStates=${blockStates.size}")
             
             if (sizeX < 0) {
                 posX += sizeX + 1
@@ -136,15 +153,15 @@ object LitematicFormat : StructureSerializer {
         val shape = Shape(adjustedBlocks)
         
         return Blueprint(
-            id = schematicName,
+            id = finalId,
             shape = shape,
-            meta = BlueprintMeta(displayName = schematicName)
+            meta = BlueprintMeta(displayName = finalId)
         )
     }
     
     private fun parsePalette(paletteList: List<Any>): List<BlockData> {
         return paletteList.mapNotNull { entry ->
-            val compound = entry as? Map<String, Any> ?: return@mapNotNull null
+            val compound = (entry as? NbtCompound)?.value ?: return@mapNotNull null
             
             val name = compound.getNbtString("Name") ?: "minecraft:air"
             val properties = compound.getNbtCompound("Properties") ?: emptyMap()

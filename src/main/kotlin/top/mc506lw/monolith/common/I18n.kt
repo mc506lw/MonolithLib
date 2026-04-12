@@ -163,6 +163,7 @@ object I18n {
                 val info = translatable("message.command.help.info")
                 val preview = translatable("message.command.help.preview")
                 val build = translatable("message.command.help.build")
+                val blueprint = translatable("message.command.help.blueprint")
                 val usage = translatable("message.command.help.usage")
                 val step1 = translatable("message.command.help.step1")
                 val step2 = translatable("message.command.help.step2")
@@ -307,6 +308,21 @@ object I18n {
             val controllerMustBeRebar = translatable("message.command.controller_must_be_rebar")
             val buildCancelled = translatable("message.command.build_cancelled")
             val buildFailed = translatable("message.command.build_failed")
+            
+            object Blueprint {
+                val title = translatable("message.command.blueprint.title")
+                fun given(id: String) = translatable(
+                    "message.command.blueprint.given",
+                    arg("id", id)
+                )
+                fun notFound(id: String) = translatable(
+                    "message.command.blueprint.not_found",
+                    arg("id", id)
+                )
+                val noId = translatable("message.command.blueprint.no_id")
+                val inventoryFull = translatable("message.command.blueprint.inventory_full")
+                val hint = translatable("message.command.blueprint.hint")
+            }
         }
         
         object Test {
@@ -384,6 +400,264 @@ object I18n {
             fun testBlocksRegistered(count: Int) = translatable(
                 "message.init.test_blocks_registered",
                 arg("count", count)
+            )
+        }
+        
+        object BuildSite {
+            val previewCancelled = translatable("message.buildsite.preview_cancelled")
+            val targetNotAir = translatable("message.buildsite.target_not_air")
+            fun siteExists(blueprintId: String) = translatable(
+                "message.buildsite.site_exists",
+                arg("blueprint_id", blueprintId)
+            )
+            val blueprintCorrupted = translatable("message.buildsite.blueprint_corrupted")
+            fun blueprintNotRegistered(blueprintId: String) = translatable(
+                "message.buildsite.blueprint_not_registered",
+                arg("blueprint_id", blueprintId)
+            )
+            val previewFailed = translatable("message.buildsite.preview_failed")
+            val validationFailed = translatable("message.buildsite.validation_failed")
+            val fixIssues = translatable("message.buildsite.fix_issues")
+            val siteCreateFailed = translatable("message.buildsite.site_create_failed")
+            val siteCreated = translatable("message.buildsite.site_created")
+            fun siteInfo(blueprintId: String, facing: String) = translatable(
+                "message.buildsite.site_info",
+                arg("blueprint_id", blueprintId),
+                arg("facing", facing)
+            )
+            fun siteLayers(total: Int, current: Int) = translatable(
+                "message.buildsite.site_layers",
+                arg("total", total),
+                arg("current", current)
+            )
+            val siteCoreHint = translatable("message.buildsite.site_core_hint")
+            fun existingBlocks(count: Int) = translatable(
+                "message.buildsite.existing_blocks",
+                arg("count", count)
+            )
+            fun layerCompleted(layer: Int) = translatable(
+                "message.buildsite.layer_completed",
+                arg("layer", layer)
+            )
+            val placeCorrectController = translatable("message.buildsite.place_correct_controller")
+            fun controllerRequired(key: String) = translatable(
+                "message.buildsite.controller_required",
+                arg("key", key)
+            )
+            val placeControllerFirst = translatable("message.buildsite.place_controller_first")
+            val coreCannotPlace = translatable("message.buildsite.core_cannot_place")
+            val corePlacedValidating = translatable("message.buildsite.core_placed_validating")
+            fun structureIncomplete(missing: Int) = translatable(
+                "message.buildsite.structure_incomplete",
+                arg("missing", missing)
+            )
+            fun completionRate(rate: Int) = translatable(
+                "message.buildsite.completion_rate",
+                arg("rate", rate)
+            )
+            fun blocksNeedFix(count: Int) = translatable(
+                "message.buildsite.blocks_need_fix",
+                arg("count", count)
+            )
+            fun blocksFixed(count: Int) = translatable(
+                "message.buildsite.blocks_fixed",
+                arg("count", count)
+            )
+            val structureActivated = translatable("message.buildsite.structure_activated")
+            val structureCompleteWaiting = translatable("message.buildsite.structure_complete_waiting")
+            fun siteCompletedBroadcast(blueprintId: String, player: String) = translatable(
+                "message.buildsite.site_completed_broadcast",
+                arg("blueprint_id", blueprintId),
+                arg("player", player)
+            )
+            val allLayersComplete = translatable("message.buildsite.all_layers_complete")
+            fun allLayersProgress(rate: Int, matched: Int, total: Int) = translatable(
+                "message.buildsite.all_layers_progress",
+                arg("rate", rate),
+                arg("matched", matched),
+                arg("total", total)
+            )
+            fun allLayersFix(count: Int) = translatable(
+                "message.buildsite.all_layers_fix",
+                arg("count", count)
+            )
+            val shellCompleteController = translatable("message.buildsite.shell_complete_controller")
+            fun shellControllerKey(key: String) = translatable(
+                "message.buildsite.shell_controller_key",
+                arg("key", key)
+            )
+            val shellCoreMarker = translatable("message.buildsite.shell_core_marker")
+            val shellCompleteNoController = translatable("message.buildsite.shell_complete_no_controller")
+            val siteCancelled = translatable("message.buildsite.site_cancelled")
+            fun siteCancelledBroadcast(blueprintId: String, player: String) = translatable(
+                "message.buildsite.site_cancelled_broadcast",
+                arg("blueprint_id", blueprintId),
+                arg("player", player)
+            )
+            fun buildBlockDestroyed(layer: Int) = translatable(
+                "message.buildsite.build_block_destroyed",
+                arg("layer", layer)
+            )
+            val hasActivePreviewBlockMode = translatable("message.buildsite.has_active_preview_block_mode")
+            val previewExpired = translatable("message.buildsite.preview_expired")
+            fun previewCountdown(countdown: Int) = translatable(
+                "message.buildsite.preview_countdown",
+                arg("countdown", countdown)
+            )
+            val previewHeader = translatable("message.buildsite.preview_header")
+            fun previewBlueprint(blueprintId: String) = translatable(
+                "message.buildsite.preview_blueprint",
+                arg("blueprint_id", blueprintId)
+            )
+            fun previewFacing(facing: String) = translatable(
+                "message.buildsite.preview_facing",
+                arg("facing", facing)
+            )
+            fun previewSize(width: Int, height: Int, depth: Int) = translatable(
+                "message.buildsite.preview_size",
+                arg("width", width),
+                arg("height", height),
+                arg("depth", depth)
+            )
+            fun previewPosition(minX: Int, minY: Int, minZ: Int, maxX: Int, maxY: Int, maxZ: Int) = translatable(
+                "message.buildsite.preview_position",
+                arg("min_x", minX),
+                arg("min_y", minY),
+                arg("min_z", minZ),
+                arg("max_x", maxX),
+                arg("max_y", maxY),
+                arg("max_z", maxZ)
+            )
+            val previewValid = translatable("message.buildsite.preview_valid")
+            fun previewErrors(count: Int) = translatable(
+                "message.buildsite.preview_errors",
+                arg("count", count)
+            )
+            val previewWarnings = translatable("message.buildsite.preview_warnings")
+            val previewInstructions = translatable("message.buildsite.preview_instructions")
+            fun previewAutoCancel(seconds: Int) = translatable(
+                "message.buildsite.preview_auto_cancel",
+                arg("seconds", seconds)
+            )
+            val previewFooter = translatable("message.buildsite.preview_footer")
+        }
+        
+        object EasyBuild {
+            fun layerCompleted(layer: Int) = translatable(
+                "message.easybuild.layer_completed",
+                arg("layer", layer)
+            )
+            val allComplete = translatable("message.easybuild.all_complete")
+            fun progress(rate: Int, matched: Int, total: Int) = translatable(
+                "message.easybuild.progress",
+                arg("rate", rate),
+                arg("matched", matched),
+                arg("total", total)
+            )
+            fun needFix(count: Int) = translatable(
+                "message.easybuild.need_fix",
+                arg("count", count)
+            )
+            fun fixed(count: Int) = translatable(
+                "message.easybuild.fixed",
+                arg("count", count)
+            )
+            val shellComplete = translatable("message.easybuild.shell_complete")
+            fun shellController(key: String) = translatable(
+                "message.easybuild.shell_controller",
+                arg("key", key)
+            )
+            val shellCompleteNoCore = translatable("message.easybuild.shell_complete_no_core")
+        }
+        
+        object Printer {
+            fun layerCompleted(layer: Int) = translatable(
+                "message.printer.layer_completed",
+                arg("layer", layer)
+            )
+            val allComplete = translatable("message.printer.all_complete")
+            fun progress(rate: Int, matched: Int, total: Int) = translatable(
+                "message.printer.progress",
+                arg("rate", rate),
+                arg("matched", matched),
+                arg("total", total)
+            )
+            fun needFix(count: Int) = translatable(
+                "message.printer.need_fix",
+                arg("count", count)
+            )
+            fun fixed(count: Int) = translatable(
+                "message.printer.fixed",
+                arg("count", count)
+            )
+            val shellComplete = translatable("message.printer.shell_complete")
+            fun shellController(key: String) = translatable(
+                "message.printer.shell_controller",
+                arg("key", key)
+            )
+            val shellCompleteNoCore = translatable("message.printer.shell_complete_no_core")
+        }
+        
+        object Litematica {
+            fun modeAutoDisabled(modes: String) = translatable(
+                "message.litematica.mode_auto_disabled",
+                arg("modes", modes)
+            )
+            fun leftRangeCountdown(countdown: Int) = translatable(
+                "message.litematica.left_range_countdown",
+                arg("countdown", countdown)
+            )
+            val easybuildEnabled = translatable("message.litematica.easybuild_enabled")
+            val easybuildDisabled = translatable("message.litematica.easybuild_disabled")
+            val noSiteNearby = translatable("message.litematica.no_site_nearby")
+            val printerEnabled = translatable("message.litematica.printer_enabled")
+            val printerDisabled = translatable("message.litematica.printer_disabled")
+            val printerNoSite = translatable("message.litematica.printer_no_site")
+            val usage = translatable("message.litematica.usage")
+        }
+        
+        object BlueprintTable {
+            val craftSuccess = translatable("message.blueprint_table.craft_success")
+            val guiTitle = translatable("message.blueprint_table.gui_title")
+        }
+        
+        object Builder {
+            val worldUnloaded = translatable("message.builder.world_unloaded")
+            val conflictingBlocks = translatable("message.builder.conflicting_blocks")
+            fun conflictPositions(positions: String) = translatable(
+                "message.builder.conflict_positions",
+                arg("positions", positions)
+            )
+            fun moreConflicts(count: Int) = translatable(
+                "message.builder.more_conflicts",
+                arg("count", count)
+            )
+            val insufficientMaterials = translatable("message.builder.insufficient_materials")
+            fun missingMaterial(material: String, count: Int) = translatable(
+                "message.builder.missing_material",
+                arg("material", material),
+                arg("count", count)
+            )
+            val worldUnloadedCancelled = translatable("message.builder.world_unloaded_cancelled")
+            fun buildProgress(placed: Int, total: Int, progress: String) = translatable(
+                "message.builder.build_progress",
+                arg("placed", placed),
+                arg("total", total),
+                arg("progress", progress)
+            )
+            fun startBuild(blueprintId: String) = translatable(
+                "message.builder.start_build",
+                arg("blueprint_id", blueprintId)
+            )
+            fun buildInfo(count: Int) = translatable(
+                "message.builder.build_info",
+                arg("count", count)
+            )
+            val buildCancelled = translatable("message.builder.build_cancelled")
+            val buildComplete = translatable("message.builder.build_complete")
+            fun structureInfo(blueprintId: String) = translatable(
+                "message.builder.structure_info",
+                arg("blueprint_id", blueprintId)
             )
         }
     }

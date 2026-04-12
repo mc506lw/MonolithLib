@@ -1,5 +1,6 @@
 package top.mc506lw.monolith.core.io
 
+import org.bukkit.Bukkit
 import top.mc506lw.monolith.core.io.formats.BinaryFormat
 import top.mc506lw.monolith.core.io.formats.LitematicFormat
 import top.mc506lw.monolith.core.io.formats.NbtStructureFormat
@@ -7,6 +8,8 @@ import top.mc506lw.monolith.core.io.formats.SchemFormat
 import top.mc506lw.monolith.core.model.Blueprint
 import java.io.File
 import java.security.MessageDigest
+import java.util.logging.Level
+import java.util.logging.Logger
 
 object LoadPriority {
     const val MNB = 0
@@ -22,7 +25,7 @@ object LoadPriority {
     )
 }
 
-class IOModule(private val dataFolder: File) {
+class IOModule(private val dataFolder: File, private val logger: Logger = Bukkit.getLogger()) {
     
     private val importsFolder = File(dataFolder, "imports")
     private val blueprintsFolder = File(dataFolder, "blueprints")
@@ -86,7 +89,7 @@ class IOModule(private val dataFolder: File) {
             configHashes[blueprintId] = calculateHash(configFile)
         }
         
-        println("[MonolithLib] 已重建产品: $blueprintId")
+        logger.info("[MonolithLib] 已重建产品: $blueprintId")
         return finalBlueprint
     }
     
@@ -105,15 +108,24 @@ class IOModule(private val dataFolder: File) {
     private fun processImports() {
         val importFiles = importsFolder.listFiles()?.filter { it.isFile } ?: emptyList()
         
+        if (importFiles.isEmpty()) {
+            logger.info("[MonolithLib] imports 文件夹为空，路径: ${importsFolder.absolutePath}")
+            return
+        }
+        
         val groupedFiles = importFiles.groupBy { file ->
             file.nameWithoutExtension
         }
+        
+        var importedCount = 0
+        var failedCount = 0
         
         for ((baseName, files) in groupedFiles) {
             val blueprintDir = File(blueprintsFolder, baseName)
             val baseMnb = File(blueprintDir, "$baseName.mnb")
             
             if (baseMnb.exists()) {
+                logger.fine("[MonolithLib] 跳过已导入蓝图: $baseName")
                 continue
             }
             
@@ -123,7 +135,7 @@ class IOModule(private val dataFolder: File) {
             
             val sourceFile = sortedFiles.firstOrNull() ?: continue
             
-            val blueprint = loadBlueprintFromSourceFile(sourceFile)
+            val blueprint = loadBlueprintFromSourceFile(sourceFile, baseName)
             if (blueprint != null) {
                 blueprintDir.mkdirs()
                 
@@ -138,9 +150,15 @@ class IOModule(private val dataFolder: File) {
                     file.delete()
                 }
                 
-                println("[MonolithLib] 已导入蓝图: $baseName (${blueprint.blockCount} 方块)")
+                importedCount++
+                logger.info("[MonolithLib] 已导入蓝图: $baseName (${blueprint.blockCount} 方块)")
+            } else {
+                failedCount++
+                logger.warning("[MonolithLib] 导入蓝图失败: $baseName (文件: ${sourceFile.name})")
             }
         }
+        
+        logger.info("[MonolithLib] 导入完成: $importedCount 成功, $failedCount 失败")
     }
     
     private fun buildAllProducts() {
@@ -175,17 +193,20 @@ class IOModule(private val dataFolder: File) {
             ?: emptyList()
         
         for (file in standaloneProducts) {
-            println("[MonolithLib] 加载独立产品: ${file.nameWithoutExtension}")
+            logger.info("[MonolithLib] 加载独立产品: ${file.nameWithoutExtension}")
         }
     }
     
-    private fun loadBlueprintFromSourceFile(file: File): Blueprint? {
+    private fun loadBlueprintFromSourceFile(file: File, blueprintId: String): Blueprint? {
         return when (file.extension.lowercase()) {
             "mnb" -> loadBlueprintFromMnb(file)
-            "litematic" -> LitematicFormat.load(file)
-            "schem" -> SchemFormat.load(file)
-            "nbt" -> NbtStructureFormat.load(file)
-            else -> null
+            "litematic" -> LitematicFormat.load(file, blueprintId)
+            "schem" -> SchemFormat.load(file, blueprintId)
+            "nbt" -> NbtStructureFormat.load(file, blueprintId)
+            else -> {
+                logger.warning("[MonolithLib] 不支持的文件格式: ${file.extension}")
+                null
+            }
         }
     }
     
@@ -193,7 +214,7 @@ class IOModule(private val dataFolder: File) {
         return try {
             BinaryFormat.load(file)
         } catch (e: Exception) {
-            println("[MonolithLib] 加载 .mnb 文件失败: ${file.name} - ${e.message}")
+            logger.log(Level.WARNING, "[MonolithLib] 加载 .mnb 文件失败: ${file.name}", e)
             null
         }
     }
@@ -202,7 +223,7 @@ class IOModule(private val dataFolder: File) {
         try {
             BinaryFormat.save(blueprint, file, formatVersion, configHash)
         } catch (e: Exception) {
-            println("[MonolithLib] 保存 .mnb 文件失败: ${file.name} - ${e.message}")
+            logger.log(Level.SEVERE, "[MonolithLib] 保存 .mnb 文件失败: ${file.name}", e)
         }
     }
     

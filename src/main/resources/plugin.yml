@@ -40,3 +40,9 @@ permissions:
   monolithlib.test:
     description: 测试命令权限
     default: true
+  monolith.easybuild:
+    description: 允许使用轻松放置模式
+    default: true
+  monolith.printer:
+    description: 允许使用自动打印模式
+    default: true

@@ -8,6 +8,7 @@ import top.mc506lw.monolith.core.io.StructureSerializer
 import top.mc506lw.monolith.core.io.getNbtCompound
 import top.mc506lw.monolith.core.io.getNbtInt
 import top.mc506lw.monolith.core.io.getNbtList
+import java.util.logging.Level
 import top.mc506lw.monolith.core.io.getNbtString
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.BlockEntry
@@ -23,11 +24,16 @@ object NbtStructureFormat : StructureSerializer {
     override val fileExtension: String = ".nbt"
     
     fun load(file: File): Blueprint? {
+        return load(file, file.nameWithoutExtension)
+    }
+    
+    fun load(file: File, blueprintId: String): Blueprint? {
         return try {
             file.inputStream().use { input ->
-                deserialize(input)
+                deserialize(input, blueprintId)
             }
         } catch (e: Exception) {
+            Bukkit.getLogger().log(Level.WARNING, "[MonolithLib] NbtStructureFormat 加载失败: ${file.absolutePath}", e)
             null
         }
     }
@@ -36,11 +42,16 @@ object NbtStructureFormat : StructureSerializer {
         throw UnsupportedOperationException("暂不支持导出为 .nbt 格式")
     }
     
-    override fun deserialize(input: InputStream): Blueprint {
+    override fun deserialize(input: InputStream): Blueprint? {
+        return deserialize(input, "nbt_structure")
+    }
+    
+    fun deserialize(input: InputStream, blueprintId: String = "nbt_structure"): Blueprint {
         val gzipInput = GZIPInputStream(input)
         val dataInput = DataInputStream(gzipInput)
         
         val root = NbtReader(dataInput).readRoot()
+        Bukkit.getLogger().info("[MonolithLib] NbtStructureFormat 根标签: ${root.keys}")
         
         val sizeList = root.getNbtList("size") ?: return Blueprint(
             id = "empty",
@@ -51,6 +62,8 @@ object NbtStructureFormat : StructureSerializer {
         val blocksList = root.getNbtList("blocks") ?: emptyList()
         val paletteList = root.getNbtList("palette") ?: emptyList()
         
+        Bukkit.getLogger().info("[MonolithLib] NbtStructureFormat: size=$sizeList, blocks=${blocksList.size}, palette=${paletteList.size}")
+        
         val sizeX = (sizeList.getOrNull(0) as? Number)?.toInt() ?: 1
         val sizeY = (sizeList.getOrNull(1) as? Number)?.toInt() ?: 1
         val sizeZ = (sizeList.getOrNull(2) as? Number)?.toInt() ?: 1
@@ -60,7 +73,7 @@ object NbtStructureFormat : StructureSerializer {
         val allBlocks = mutableListOf<BlockEntry>()
         
         for (blockEntry in blocksList) {
-            val compound = blockEntry as? Map<String, Any> ?: continue
+            val compound = (blockEntry as? NbtCompound)?.value ?: continue
             
             val posList = compound.getNbtList("pos") ?: continue
             val state = compound.getNbtInt("state") ?: 0
@@ -81,15 +94,15 @@ object NbtStructureFormat : StructureSerializer {
         val shape = Shape(allBlocks)
         
         return Blueprint(
-            id = "nbt_structure",
+            id = blueprintId,
             shape = shape,
-            meta = BlueprintMeta(displayName = "NBT Structure")
+            meta = BlueprintMeta(displayName = blueprintId)
         )
     }
     
     private fun parsePalette(paletteList: List<Any>): List<BlockData> {
         return paletteList.mapNotNull { entry ->
-            val compound = entry as? Map<String, Any> ?: return@mapNotNull null
+            val compound = (entry as? NbtCompound)?.value ?: return@mapNotNull null
             
             val name = compound.getNbtString("Name") ?: "minecraft:air"
             val properties = compound.getNbtCompound("Properties") ?: emptyMap()

@@ -16,15 +16,15 @@
 
 <div align="center">
   <h1>MonolithLib</h1>
-  <p><strong>Rebar 多方块机器的现代 3D 打印方案</strong></p>
-  <p>彻底解决巨型结构预览卡顿 · 完美支持楼梯等复杂方块状态 · 告别手写坐标</p>
+  <p><strong>Rebar 多方块机器的现代 3D 打印与高级验证方案</strong></p>
+  <p>降维打击原生检测 · 完美状态支持 · 自动修正 · 告别手写坐标</p>
 </div>
 
 <div align="center">
-  <a href="#-核心理念"><strong>核心理念</strong></a> ·
+  <a href="#-为什么需要-monolithlib"><strong>痛点</strong></a> ·
+  <a href="#-核心理念"><strong>理念</strong></a> ·
   <a href="#-快速开始"><strong>快速开始</strong></a> ·
   <a href="#-rebar-集成指南"><strong>Rebar 集成</strong></a> ·
-  <a href="#-玩家使用方法"><strong>玩家指南</strong></a> ·
   <a href="#-项目结构"><strong>架构</strong></a> ·
   <a href="./API_GUIDE.md"><strong>API 文档</strong></a>
 </div>
@@ -33,37 +33,51 @@
 
 ---
 
-## 💡 核心理念：物理与逻辑的解耦
+## 🤔 为什么需要 MonolithLib？
 
-在使用 MonolithLib 之前，请先理解它的核心设计哲学。我们将多方块机器分成了两个完全独立的世界：
+如果你在用 [Rebar](https://github.com/pylonmc/rebar) 做巨型多方块机器，你一定会遇到这三个致命痛点：
 
-- **物理层（MonolithLib 负责）**：机器长什么样？由哪些方块组成？楼梯朝哪个方向？这叫 **Shape（形状）**。
-- **逻辑层（Rebar 负责）**：机器能干什么？哪个方块算热源？这叫 **Component（组件）**。
+1. **状态丢失**：Rebar 原生预览和检测不支持楼梯朝向、半砖等复杂 `BlockData`。你定义的机器只能是光秃秃的方块。
+2. **状态严格匹配**：巨型机器（几千方块）如果玩家放错了一个楼梯方向，Rebar 会瞬间判定 `unform`，整个机器停机，体验极差。
+3. **检测性能瓶颈**：Rebar 的 `checkFormed()` 是暴力遍历匹配，结构越大，每次放置方块时的延迟检测消耗越严重。
 
-MonolithLib **不干涉、不读取** Rebar 的组件代码。我们通过 **“相对坐标对齐”** 这唯一的桥梁，让两者完美咬合。
-
-### 两个核心概念
-1. **Shape（形状）**：纯粹的 3D 物理模型数据。从 `.mnb` 等文件加载而来，只包含相对坐标和精确的 `BlockData`。
-2. **Blueprint（蓝图）**：`Shape` + 业务元数据（显示名、描述、所需材料清单、核心方块偏移量）。这是玩家和开发者直接交互的对象。
+**MonolithLib 就是为了彻底消灭这三个问题而生。**
 
 ---
 
-## ✨ 特性
+## 💡 核心理念：“验改分离”与独立引擎
+
+MonolithLib **不依赖** Rebar 的检测系统，而是拥有一套完全独立的、借鉴格雷科技的高级验证引擎。
+
+- **独立验证**：采用增量式、格雷科技级别的高性能检测，**只检查材质匹配**，忽略方块状态（朝向、半砖类型等）。玩家只需放对材质，状态由 MonolithLib 自动修正。
+- **无缝欺骗**：当所有方块材质匹配后，MonolithLib 会在底层**瞬间自动修正**所有方块状态为 Rebar 要求的精确状态，然后轻触 Rebar 的触发器，让 Rebar 毫无察觉地接收这台完美机器。
+
+### 两个核心概念
+1. **Shape（形状）**：纯粹的 3D 物理模型。包含精确的相对坐标和 `BlockData`（完美保存楼梯朝向等状态）。
+2. **Blueprint（蓝图）**：`Shape` + 业务元数据（显示名、所需材料、核心偏移量）。这是玩家和开发者直接交互的对象。
+
+---
+
+## ✨ 核心特性
 
 <div align="center">
   <table>
     <tr>
-      <td align="center" width="33%">
-        <h3>🏗️ 精确的物理形状</h3>
-        <p>原生支持楼梯朝向、半砖、红石方向等所有方块状态，彻底告别 Rebar 原版预览的状态丢失问题</p>
+      <td align="center" width="25%">
+        <h3>🧠 高级验证引擎</h3>
+        <p>独立于 Rebar，只检查材质匹配，忽略方块状态，巨型结构不卡顿</p>
       </td>
-      <td align="center" width="33%">
+      <td align="center" width="25%">
+        <h3>🛠️ 瞬间状态修正</h3>
+        <p>材质全部匹配后，自动将所有方块状态修正为 Rebar 要求的精确状态</p>
+      </td>
+      <td align="center" width="25%">
         <h3>👁️ 极致性能预览</h3>
-        <p>类似投影MOD的逐层投影渲染，任何时刻仅计算玩家周身 7 格内的幽灵方块，支持百万级方块巨型结构</p>
+        <p>类似 Litematica 的逐层投影，仅渲染玩家周身 7 格幽灵方块，万级结构丝滑预览</p>
       </td>
-      <td align="center" width="33%">
-        <h3>📦 告别手写坐标</h3>
-        <p>支持导入 .schem/.litematic/.nbt，并导出为极速二进制 .mnb 格式，游戏内搭建，一键导出</p>
+      <td align="center" width="25%">
+        <h3>📦 零代码定义形状</h3>
+        <p>支持导入 .schem/.litematic/.nbt，导出极速二进制 .mnb 格式，游戏内搭建导出</p>
       </td>
     </tr>
   </table>
@@ -73,149 +87,152 @@ MonolithLib **不干涉、不读取** Rebar 的组件代码。我们通过 **“
 
 ## 🚀 快速开始（开发者视角）
 
-作为 Rebar 机械的开发者，你不需要再写几百行坐标定义，只需三步：
+作为 Rebar 机械开发者，你的代码将变得极度清爽。你只需要关心机器的逻辑，物理形状全部交给 `.mnb`。
 
-### 1. 添加依赖
-
-```kotlin
-repositories { mavenCentral() }
-dependencies { compileOnly("top.mc506lw:monolithlib:1.0.0") }
-```
-
-### 2. 注册蓝图
+### 1. 注册蓝图
 
 ```kotlin
 class MyPlugin : JavaPlugin() {
     override fun onEnable() {
-        // 1. 加载纯物理形状（你在游戏里用工具导出的 .mnb 文件）
-        val shape = MonolithAPI.io.loadShape(File(dataFolder, "blueprints/blast_furnace.mnb"))
+        // 加载物理形状
+        val shape = MonolithAPI.io.loadShape(File(dataFolder, "blast_furnace.mnb"))
         
-        // 2. 包装为蓝图
         val blueprint = Blueprint(
             id = "blast_furnace",
             shape = shape,
             meta = BlueprintMeta(
-                name = text("高级高炉").color(NamedTextColor.GOLD),
-                description = listOf(text("能够高温冶炼矿石"))
-                // controllerOffset 默认为 0,0,0，如果导出时选了核心则自动携带
+                name = text("高级高炉"),
+                description = listOf(text("支持自动状态修正的巨型高炉"))
             )
         )
         
-        // 3. 注册
         MonolithAPI.registry.register(blueprint)
     }
 }
 ```
 
-### 3. 编写 Rebar 代码（坐标契约）
+### 2. 编写 Rebar 代码（坐标契约）
 
-去写你的 Rebar 机械类，**唯一的要求是：Rebar 代码里的偏移量，必须和 .mnb 文件里的相对坐标一模一样。**
+Rebar 代码里写死最严格的规则，MonolithLib 会在最后帮你"骗"过这些规则。
 
 ```kotlin
 class BlastFurnaceMultiblock : RebarSimpleMultiblock {
     override val components = mapOf(
-        // .mnb 里 (0,0,0) 是核心，这里就写 (0,0,0)
         Pair(Vector3i(0, 0, 0), RebarMultiblockComponent(NamespacedKey("myplugin", "core"))),
-        
-        // .mnb 里 (1,0,0) 是朝西的熔炉，这里就精确匹配朝西的熔炉状态
+        // Rebar 要求必须是朝西的楼梯，但玩家朝东放了也能用，MonolithLib 会自动修正！
         Pair(Vector3i(1, 0, 0), VanillaBlockdataMultiblockComponent(
-            Material.FURNACE.createBlockData("[facing=west]")
+            Material.OAK_STAIRS.createBlockData("[facing=west,half=bottom]")
         ))
     )
-    // ... 你的机器逻辑
 }
 ```
 
 ---
 
-## 🔌 Rebar 集成指南：魔法开关
+## 🔌 Rebar 集成指南：魔法开关（验改分离）
 
-当玩家使用 MonolithLib 的自动建造（未来的加农炮/打印机）时，MonolithLib 会自动处理 Rebar 的组装触发，**开发者完全不需要手动调用 Rebar 的检测 API**。
+当玩家在建造巨型结构时，MonolithLib 完全接管了检测过程：
 
-**底层原理（你不需要管，但知道有好处）：**
-1. MonolithLib 遍历 `.mnb`，用 Bukkit 原生 API 瞬间摆放完所有“外壳方块”（带精确状态）。
-2. MonolithLib 找到核心方块位置，最后一步调用 `BlockStorage.placeBlock()` 放置 Rebar 核心方块。
-3. Rebar 监听到放置事件，下一 tick 自动执行 `checkFormed()`，发现周围的方块状态完美匹配，机器瞬间启动！
+1. **玩家建造期**：Rebar 完全休眠。MonolithLib 的高性能引擎实时检测，**只检查材质**，即使玩家把楼梯放反了，MonolithLib 也算作"有效进度"。
+2. **材质全部匹配**：当所有方块材质都正确放置后，MonolithLib 判定建造完成。
+3. **自动修正**：MonolithLib 在 1 tick 内，将所有方块 `setBlockData` 修正为 Rebar 代码里要求的精确状态。
+4. **唤醒 Rebar**：MonolithLib 自动触发 Rebar 的核心放置机制。Rebar 醒来一测，全是完美匹配，瞬间 `onMultiblockFormed()`。
+
+**开发者无需编写任何修正逻辑，MonolithLib 全包了。**
 
 ---
 
 ## 🎮 玩家使用方法
 
-### 命令结构（清晰明确）
+- `/monolith list` - 查看所有可用蓝图
+- `/monolith info <ID>` - 查看详情与材料
+- `/monolith preview <ID>` - 开启分层投影预览
+- `/monolith build <ID>` - 执行自动建造（未来功能）
+- `/monolith litematica easybuild` - 开启/关闭轻松放置模式
+- `/monolith litematica printer` - 开启/关闭自动打印模式
 
-MonolithLib 剔除了冗余的同义词命令，只提供最直觉的操作：
+**工地系统 (BuildSite)**：玩家使用蓝图物品右键放置后创建的建造区域，支持：
+- 分层渲染：逐层显示待建造的幽灵方块
+- 进度追踪：记录已放置的方块位置
+- 核心检测：支持 Rebar 核心控制器的放置检测
 
-- `/ml list` - 查看所有可用蓝图
-- `/ml info <蓝图ID>` - 查看蓝图详情与所需材料
-- `/ml preview <蓝图ID>` - 开启分层投影预览
-- `/ml build <蓝图ID>` - 执行自动建造（需消耗材料）
+**轻松放置模式 (EasyBuild)**：类似 Litematica 的半自动建造
+- 玩家手持正确材质的方块对准幽灵位置右键即可自动放置
+- 层级完成时自动切换到下一层
+- 建造完所有层后自动进行最终状态修正
 
-### 投影引导体验（类似 投影MOD 的分层投影渲染）
+**自动打印模式 (Printer)**：自动化的建造助手
+- 玩家周围 4 格范围内的幽灵方块会被自动放置
+- 每 4 tick 自动检测并放置一个方块
+- 适合生存模式下的快速建造
 
-1. 玩家输入 `/ml preview blast_furnace`。
-2. 脚下出现第一层结构的半透明幽灵方块（无论结构多大，只渲染身边 7 格，极其流畅）。
-3. 玩家按照幽灵方块，手动把真实的熔炉、楼梯放置到对应位置。
-4. 本层放完后，幽灵方块自动切换到下一层。
-5. 放置到最后的核心方块时，MonolithLib 自动接管放置逻辑，**机器直接成型并启动**。
+**建造体验**：玩家看着投影，不需要死磕每一个方块的朝向。只要放对了材质，MonolithLib 会自动修正所有状态，机器直接启动。
 
 ---
 
-## 📁 项目结构
+## 🔧 蓝图桌 (Blueprint Table)
 
-经过彻底的解耦重构，MonolithLib 现在拥有极高的内聚性和低耦合度：
+蓝图桌是一个特殊的方块机器，用于在游戏内创建蓝图物品：
+
+**合成配方**：`/# Loom + 4x Paper → Blueprint Table`
+
+蓝图桌功能：
+- GUI 界面显示所有已注册的蓝图
+- 放入纸（Paper）后可以从列表中选择蓝图进行"打印"
+- 打印出的蓝图物品可以右键放置创建工地（BuildSite）
+- 蓝图物品包含面向信息，可以设定结构的朝向
+
+---
+
+## 🧱 项目结构
 
 ```
 MonolithLib/
-├── api/                      # 🚪 对外门面（按意图划分）
-│   ├── MonolithAPI.kt        #    统一入口
-│   └── BlueprintAPI.kt       #    蓝图操作接口
+├── api/                      # 🚪 对外门面
+│   ├── MonolithAPI.kt        # 核心 API 入口
+│   ├── BlueprintAPI.kt       # 蓝图操作 API
+│   ├── dsl/                  # DSL 构建器
+│   └── event/                # 事件定义
 │
-├── core/                     # 🧱 纯粹的基础设施（零业务逻辑）
+├── core/                     # 🧱 纯粹的基础设施
 │   ├── model/                #    Shape、Blueprint 数据模型
-│   ├── io/formats/           #    各种格式的读写器
-│   ├── math/                 #    Matrix、Vector3i
+│   ├── math/                 #    向量、矩阵数学
+│   ├── io/formats/           #    格式读写器 (.mnb/.schem/.litematic/.nbt)
 │   └── transform/            #    坐标变换、方块状态旋转
 │
-├── feature/                  # 🛠️ 业务功能（可插拔）
-│   ├── preview/              #    Ghost 渲染器、实体池
-│   ├── builder/              #    建造执行器
-│   ├── material/             #    材料统计
-│   └── rebar/                #    Rebar 适配器 (仅处理核心放置)
+├── feature/                  # 🛠️ 业务功能
+│   ├── preview/             #    Ghost 渲染器、投影会话
+│   ├── builder/             #    建造执行器
+│   ├── buildsite/           #    工地系统：分层建造、进度追踪
+│   ├── machine/             #    蓝图桌机器方块
+│   ├── material/            #    材料统计计算器
+│   └── rebar/               #    Rebar 适配器
 │
-├── validation/               # 🛡️ 验证层
-│   ├── ValidationEngine.kt   #    验证引擎
-│   └── predicate/            #    严格/松散/Rebar/旋转匹配器
+├── validation/               # 🛡️ 核心灵魂：高级验证引擎
+│   ├── ValidationEngine.kt  #    高性能增量检测（只检查材质）
+│   ├── AsyncValidator.kt    #    异步验证
+│   ├── AutoFixer.kt         #    自动状态修正
+│   └── predicate/           #    谓词工厂：严格/松散/Rebar 匹配
+│
+├── integration/              # 🔗 第三方集成
+│   └── BlueprintMultiblockAdapter.kt  # Rebar 多方块适配器
 │
 ├── lifecycle/                # ♻️ 生命周期管理
-│   ├── BlueprintLifecycle.kt #    蓝图状态机
-│   └── ChunkHandler.kt       #    区块加载卸载处理
+│   └── BlueprintLifecycle.kt
 │
 └── internal/                 # ⚙️ 内部实现
-    ├── command/              #    命令与 Tab 补全
-    ├── listener/             #    事件监听
+    ├── command/              #    命令系统
     └── mixin/                #    底层注入
 ```
 
 ---
 
-## 🗺️ 路线图 (未来计划)
+## ️ 路线图 (未来计划)
 
-MonolithLib 的最终形态是成为 Rebar 生态中不可或缺的“现代化建造基础设施”：
-
-- [ ] **投影打印机**：就是投影打印机。
-- [ ] **蓝图加农炮**：类似机械动力，搭好加农炮多方块，放入材料和图纸，拉下开关轻松建造巨型机器。
-- [ ] **图形化蓝图 GUI**：分类浏览、材料预览、一键预览的图形界面。
+- [ ] **投影打印机**：类似投影打印机MOD。
+- [ ] **蓝图加农炮**：类似机械动力，搭好加农炮，放入材料图纸，轰出巨型机器。
+- [ ] **图形化蓝图 GUI**：分类浏览、材料预览。
 - [ ] **蓝图分享网络**：支持从在线仓库直接下载 `.mnb` 蓝图。
-
----
-
-## 🛠️ 构建
-
-```bash
-git clone https://github.com/mc506lw/MonolithLib.git
-cd MonolithLib
-./gradlew build
-```
 
 ---
 
@@ -224,5 +241,6 @@ cd MonolithLib
 本项目采用 MIT 许可证 - 详见 [LICENSE](./LICENSE) 文件。
 
 <div align="center">
-  <p>如果 MonolithLib 拯救了你写 Rebar 坐标的时间，请给一个 ⭐️ 支持一下！</p>
+  <p>用 MonolithLib，让你的玩家享受造巨型机器的乐趣，而不是被死板的规则折磨。</p>
+  <p>如果觉得有用，请给一个 ⭐️ ！</p>
 </div>

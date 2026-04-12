@@ -343,24 +343,24 @@ val customPredicate = object : Predicate {
 
 ## 事件系统
 
-### BlueprintFormEvent - 蓝图形成
+### StructureFormEvent - 结构形成
 
 当所有方块正确放置、结构形成时触发：
 
 ```kotlin
-class BlueprintFormEvent(
+class StructureFormEvent(
     val blueprint: Blueprint,
     val controllerLocation: Location,
     val componentBlocks: Map<String, Block>   // slotId -> Block
 ) : Event()
 ```
 
-### BlueprintBreakEvent - 蓝图损坏
+### StructureBreakEvent - 结构损坏
 
 当结构的关键方块被破坏时触发：
 
 ```kotlin
-class BlueprintBreakEvent(
+class StructureBreakEvent(
     val blueprint: Blueprint,
     val controllerLocation: Location,
     val brokenBlock: Block,
@@ -414,13 +414,13 @@ class BlueprintUnloadEvent(
 
 ```kotlin
 @EventHandler
-fun onBlueprintForm(event: BlueprintFormEvent) {
+fun onStructureForm(event: StructureFormEvent) {
     val player = event.componentBlocks["controller"]?.location?.player
     player?.sendMessage("§a结构 ${event.blueprint.id} 已形成！")
 }
 
 @EventHandler
-fun onBlueprintBreak(event: BlueprintBreakEvent) {
+fun onStructureBreak(event: StructureBreakEvent) {
     event.player?.sendMessage("§c结构已损坏！")
 }
 ```
@@ -521,6 +521,29 @@ class MyPlugin : JavaPlugin() {
 }
 ```
 
+### 材料统计 (MaterialStats)
+
+获取玩家建造所需的材料统计：
+
+```kotlin
+val api = MonolithAPI.getInstance()
+
+// 获取玩家建造某蓝图所需的材料
+val stats = api.getMaterialStats(player, "my_structure")
+if (stats != null) {
+    println("总需求: ${stats.totalRequired}")
+    println("当前拥有: ${stats.totalCurrent}")
+    println("完成度: ${(stats.overallProgress * 100).toInt()}%")
+
+    for ((material, req) in stats.requirements) {
+        println("${material.name}: ${req.current}/${req.required}")
+        if (!req.isComplete) {
+            println("  还需 ${req.required - req.current} 个")
+        }
+    }
+}
+```
+
 ### 验证结构
 
 ```kotlin
@@ -562,12 +585,12 @@ api.preview.stop(player)
 ```kotlin
 server.pluginManager.registerEvents(object : Listener {
     @EventHandler
-    fun onForm(event: BlueprintFormEvent) {
+    fun onForm(event: StructureFormEvent) {
         event.blueprint.logger.info("Structure ${event.blueprint.id} formed!")
     }
 
     @EventHandler
-    fun onBreak(event: BlueprintBreakEvent) {
+    fun onBreak(event: StructureBreakEvent) {
         event.blueprint.logger.warning("Structure ${event.blueprint.id} broken!")
     }
 }, this)
@@ -585,6 +608,23 @@ server.pluginManager.registerEvents(object : Listener {
 | `monolithlib.preview` | 使用预览功能 | true |
 | `monolithlib.debug` | 调试功能 | op |
 | `monolithlib.test` | 测试命令 | true |
+| `monolith.easybuild` | 允许使用轻松放置模式 | true |
+| `monolith.printer` | 允许使用自动打印模式 | true |
+
+---
+
+## 命令参考
+
+| 命令 | 说明 | 权限 |
+|------|------|------|
+| `/monolith reload` | 重新加载所有蓝图 | `monolithlib.reload` |
+| `/monolith list` | 列出所有蓝图 | `monolithlib.base` |
+| `/monolith info <ID>` | 查看蓝图详情和材料需求 | `monolithlib.base` |
+| `/monolith preview <ID>` | 开启结构预览 | `monolithlib.preview` |
+| `/monolith build <ID>` | 开始自动建造 | `monolithlib.base` |
+| `/monolith blueprint <ID>` | 获取蓝图物品 | `monolithlib.base` |
+| `/monolith litematica easybuild` | 开启/关闭轻松放置模式 | `monolith.easybuild` |
+| `/monolith litematica printer` | 开启/关闭自动打印模式 | `monolith.printer` |
 
 ---
 
