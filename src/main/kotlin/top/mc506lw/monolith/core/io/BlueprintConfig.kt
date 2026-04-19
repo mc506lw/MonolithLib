@@ -20,7 +20,8 @@ data class BlueprintConfig(
     val customData: Map<String, Any> = emptyMap(),
     val metaName: String = "",
     val metaDescription: String = "",
-    val metaAuthor: String = ""
+    val metaAuthor: String = "",
+    val scaffoldMaterials: Map<Material, Material> = emptyMap()
 ) {
     data class OverrideEntry(
         val type: String,
@@ -70,6 +71,17 @@ object BlueprintConfigLoader {
         
         val customData = config.getConfigurationSection("custom")?.getValues(false) ?: emptyMap()
         
+        val scaffoldMaterials = mutableMapOf<Material, Material>()
+        val scaffoldSection = config.getConfigurationSection("scaffold_materials")
+        if (scaffoldSection != null) {
+            for (assembledMatKey in scaffoldSection.getKeys(false)) {
+                val assembledMat = try { Material.valueOf(assembledMatKey.uppercase()) } catch (_: Exception) { continue }
+                val scaffoldMatStr = scaffoldSection.getString(assembledMatKey) ?: continue
+                val scaffoldMat = try { Material.valueOf(scaffoldMatStr.uppercase()) } catch (_: Exception) { continue }
+                scaffoldMaterials[assembledMat] = scaffoldMat
+            }
+        }
+        
         return BlueprintConfig(
             id = id,
             version = version,
@@ -81,7 +93,8 @@ object BlueprintConfigLoader {
             customData = customData,
             metaName = config.getString("meta.name", id) ?: id,
             metaDescription = config.getString("meta.description", "") ?: "",
-            metaAuthor = config.getString("meta.author", "") ?: ""
+            metaAuthor = config.getString("meta.author", "") ?: "",
+            scaffoldMaterials = scaffoldMaterials
         )
     }
     
@@ -125,6 +138,13 @@ object BlueprintConfigLoader {
             yaml.createSection("custom", config.customData)
         }
         
+        if (config.scaffoldMaterials.isNotEmpty()) {
+            val scaffoldSection = yaml.createSection("scaffold_materials")
+            for ((assembled, scaffold) in config.scaffoldMaterials) {
+                scaffoldSection.set(assembled.name.lowercase(), scaffold.name.lowercase())
+            }
+        }
+        
         yaml.save(file)
     }
     
@@ -147,6 +167,11 @@ object BlueprintConfigLoader {
         yaml.createSection("overrides")
         yaml.createSection("slots")
         yaml.createSection("custom")
+        
+        val scaffoldSection = yaml.createSection("scaffold_materials")
+        scaffoldSection.set("iron_block", "concrete")
+        scaffoldSection.set("gold_block", "concrete_powder")
+        scaffoldSection.set("_comment", "assembled_material -> scaffold_material, 脚手架阶段使用的材料映射")
         
         yaml.save(file)
     }

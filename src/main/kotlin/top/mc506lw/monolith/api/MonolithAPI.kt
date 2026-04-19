@@ -4,18 +4,16 @@ import org.bukkit.Location
 import org.bukkit.entity.Player
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.model.Shape
-import top.mc506lw.monolith.feature.preview.PreviewSession
 import top.mc506lw.monolith.core.transform.Facing
+import top.mc506lw.monolith.feature.preview.PreviewSession
 import org.bukkit.NamespacedKey
-import top.mc506lw.monolith.feature.material.MaterialStats
 import java.io.File
 
-interface ShapeRegistry {
-    fun registerBlueprint(blueprint: Blueprint)
-    fun getBlueprint(id: String): Blueprint?
-    fun getShape(id: String): Shape?
-    fun getAllBlueprints(): Map<String, Blueprint>
-    fun getBlueprintsByControllerKey(key: NamespacedKey): List<Blueprint>
+interface BlueprintRegistry {
+    fun register(blueprint: Blueprint)
+    fun get(id: String): Blueprint?
+    fun getAll(): Map<String, Blueprint>
+    fun getByControllerKey(key: NamespacedKey): List<Blueprint>
     fun contains(id: String): Boolean
     fun remove(id: String): Blueprint?
     fun clear()
@@ -24,51 +22,37 @@ interface ShapeRegistry {
 
 interface IOFacade {
     fun loadShape(file: File, format: String? = null): Shape?
-    fun loadShapeRotated(file: File, facingRotationSteps: Int): Shape?
+    fun loadRawMNB(file: File): Blueprint?
+    fun loadBuiltMNB(file: File): Blueprint?
+    fun compileRawToBuilt(rawFile: File, configFile: File): Blueprint?
     fun getSupportedFormats(): List<String>
     fun getSupportedExtensions(): Set<String>
 }
 
 interface PreviewFacade {
-    fun start(
-        player: Player,
-        blueprint: Blueprint,
-        anchorLocation: Location,
-        facing: Facing = Facing.NORTH
-    ): PreviewSession?
-
-    fun start(
-        player: Player,
-        blueprintId: String,
-        anchorLocation: Location,
-        facing: Facing = Facing.NORTH
-    ): PreviewSession?
-
+    fun start(player: Player, blueprint: Blueprint, location: Location, facing: Facing = Facing.NORTH)
+    fun start(player: Player, blueprintId: String, location: Location, facing: Facing = Facing.NORTH): PreviewSession?
     fun stop(player: Player)
-    fun stopAtLocation(location: Location)
-    fun hasActive(player: Player): Boolean
-    fun getSession(location: Location): PreviewSession?
     fun getPlayerSessions(player: Player): List<PreviewSession>
-    fun setLayer(player: Player, layer: Int): Boolean
     fun nextLayer(player: Player): Boolean
     fun prevLayer(player: Player): Boolean
+    fun setLayer(player: Player, layer: Int): Boolean
+}
+
+interface BuildSiteFacade {
+    fun createSite(player: Player, blueprint: Blueprint, location: Location, facing: Facing): top.mc506lw.monolith.feature.buildsite.BuildSite?
+    fun getSite(location: Location): top.mc506lw.monolith.feature.buildsite.BuildSite?
 }
 
 interface MonolithAPI {
 
-    val registry: ShapeRegistry
+    val registry: BlueprintRegistry
 
     val io: IOFacade
 
     val preview: PreviewFacade
 
-    fun startValidation(player: Player, controllerLocation: Location, structureId: String, facing: Facing = Facing.NORTH)
-
-    fun stopValidation(player: Player)
-
-    fun hasActiveValidation(player: Player): Boolean
-
-    fun getMaterialStats(player: Player, structureId: String): MaterialStats?
+    val buildSite: BuildSiteFacade
 
     fun reloadStructures()
 
@@ -77,7 +61,7 @@ interface MonolithAPI {
         private var instance: MonolithAPI? = null
 
         fun getInstance(): MonolithAPI {
-            return instance ?: throw IllegalStateException("MonolithAPI 尚未初始化")
+            return instance ?: throw IllegalStateException("MonolithAPI not initialized")
         }
 
         internal fun setInstance(api: MonolithAPI) {

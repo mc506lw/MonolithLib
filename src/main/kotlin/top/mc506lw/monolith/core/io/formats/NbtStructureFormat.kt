@@ -14,6 +14,7 @@ import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.BlockEntry
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.model.BlueprintMeta
+import top.mc506lw.monolith.core.model.BuildStage
 import top.mc506lw.monolith.core.model.Shape
 import java.io.*
 import java.util.zip.GZIPInputStream
@@ -55,7 +56,7 @@ object NbtStructureFormat : StructureSerializer {
         
         val sizeList = root.getNbtList("size") ?: return Blueprint(
             id = "empty",
-            shape = Shape(emptyList()),
+            stages = mapOf(BuildStage.SCAFFOLD to Shape(emptyList()), BuildStage.ASSEMBLED to Shape(emptyList())),
             meta = BlueprintMeta(displayName = "Empty")
         )
         
@@ -95,7 +96,7 @@ object NbtStructureFormat : StructureSerializer {
         
         return Blueprint(
             id = blueprintId,
-            shape = shape,
+            stages = mapOf(BuildStage.SCAFFOLD to shape, BuildStage.ASSEMBLED to shape),
             meta = BlueprintMeta(displayName = blueprintId)
         )
     }

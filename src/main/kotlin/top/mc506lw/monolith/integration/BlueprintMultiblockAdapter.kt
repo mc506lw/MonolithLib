@@ -27,7 +27,7 @@ class BlueprintMultiblockAdapter(
     val components: Map<Vector3i, BlueprintBlockComponent> by lazy {
         val result = mutableMapOf<Vector3i, BlueprintBlockComponent>()
         
-        for (blockEntry in blueprint.shape.blocks) {
+        for (blockEntry in blueprint.assembledShape.blocks) {
             val relativePos = Vector3i(
                 blockEntry.position.x - centerOffset.x,
                 blockEntry.position.y - centerOffset.y,
@@ -39,9 +39,12 @@ class BlueprintMultiblockAdapter(
                 facing.rotationSteps
             )
             
+            val isController = (relativePos.x == 0 && relativePos.y == 0 && relativePos.z == 0)
+            
             result[relativePos] = BlueprintBlockComponent(
                 blockData = rotatedBlockData,
-                material = rotatedBlockData.material
+                material = rotatedBlockData.material,
+                isControllerPos = isController
             )
         }
         
@@ -114,10 +117,15 @@ class BlueprintMultiblockAdapter(
     
     class BlueprintBlockComponent(
         val blockData: BlockData,
-        val material: Material
+        val material: Material,
+        val isControllerPos: Boolean = false
     ) : RebarSimpleMultiblock.MultiblockComponent {
         
         override fun matches(block: Block): Boolean {
+            if (isControllerPos && BlockStorage.isRebarBlock(block)) {
+                return true
+            }
+            
             if (BlockStorage.isRebarBlock(block)) {
                 return false
             }
@@ -135,7 +143,7 @@ class BlueprintMultiblockAdapter(
     companion object {
         fun create(blueprintId: String, controllerLocation: Location, facing: Facing): BlueprintMultiblockAdapter? {
             val api = try { top.mc506lw.monolith.api.MonolithAPI.getInstance() } catch (_: IllegalStateException) { null }
-            val blueprint = api?.registry?.getBlueprint(blueprintId) ?: return null
+            val blueprint = api?.registry?.get(blueprintId) ?: return null
             return BlueprintMultiblockAdapter(blueprint, controllerLocation, facing)
         }
     }

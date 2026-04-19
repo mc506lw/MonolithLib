@@ -33,7 +33,7 @@ class StructureBuilder(
     val blocksToPlace: List<BuildEntry> by lazy {
         val entries = mutableListOf<BuildEntry>()
         
-        for (block in blueprint.shape.blocks) {
+        for (block in blueprint.assembledShape.blocks) {
             val worldPos = transform.toWorldPosition(
                 controllerPos = Vector3i(
                     controllerLocation.blockX,

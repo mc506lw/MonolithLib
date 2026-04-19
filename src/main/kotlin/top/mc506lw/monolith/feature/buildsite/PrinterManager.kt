@@ -155,19 +155,25 @@ object PrinterManager {
     
     private fun checkAdvancement(site: BuildSite, player: Player) {
         if (!site.checkLayerCompletion()) return
-        
-        if (site.advanceToNextLayer()) {
+
+        Bukkit.getLogger().info("[PrinterManager] checkAdvancement: 层${site.currentLayer}完成检查通过")
+
+        val advancedCount = site.advanceToNextIncompleteLayer()
+
+        if (advancedCount > 0) {
             player.sendMessage(legacy.serialize(I18n.Message.Printer.layerCompleted(site.currentLayer)))
-            
+            Bukkit.getLogger().info("[PrinterManager] checkAdvancement: 推进了" + advancedCount + "层，当前层=" + site.currentLayer)
+
             Bukkit.getScheduler().runTaskLater(MonolithLib.instance, Runnable {
                 for (onlinePlayer in Bukkit.getOnlinePlayers()) {
                     site.renderForPlayer(onlinePlayer)
                 }
                 EasyBuildManager.onSiteUpdated(site)
             }, 5L)
-            
+
             BuildSiteManager.saveAll()
         } else {
+            Bukkit.getLogger().info("[PrinterManager] checkAdvancement: 所有层已完成，进入最终阶段")
             startFinalPhase(site, player)
         }
     }
@@ -195,7 +201,7 @@ object PrinterManager {
             }
         }
         
-        site.startFinalPhase()
+        site.triggerAssembled()
         
         val rebarKey = site.coreRebarKey
         if (rebarKey != null) {

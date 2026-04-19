@@ -44,7 +44,7 @@ object EasyBuildManager : Listener {
         ghostIndex.clear()
         
         for (site in BuildSiteManager.getAllActiveSites()) {
-            if (site.isCompleted || site.isWaitingForCore) continue
+            if (site.isCompleted || site.state != BuildSiteState.BUILDING_LAYERS) continue
             
             val currentLayerY = site.getCurrentLayerY() ?: continue
             
@@ -60,7 +60,7 @@ object EasyBuildManager : Listener {
     }
     
     fun onSiteUpdated(site: BuildSite) {
-        if (site.isCompleted || site.isWaitingForCore) {
+        if (site.isCompleted || site.state != BuildSiteState.BUILDING_LAYERS) {
             for (ghost in site.allGhostBlocks) {
                 ghostIndex.remove(PosKey(ghost.worldPos.x, ghost.worldPos.y, ghost.worldPos.z))
             }
@@ -140,17 +140,19 @@ object EasyBuildManager : Listener {
     
     private fun checkAdvancement(site: BuildSite, player: Player) {
         if (!site.checkLayerCompletion()) return
-        
-        if (site.advanceToNextLayer()) {
+
+        val advancedCount = site.advanceToNextIncompleteLayer()
+
+        if (advancedCount > 0) {
             player.sendMessage(legacy.serialize(I18n.Message.EasyBuild.layerCompleted(site.currentLayer)))
-            
+
             Bukkit.getScheduler().runTaskLater(MonolithLib.instance, Runnable {
                 for (onlinePlayer in Bukkit.getOnlinePlayers()) {
                     site.renderForPlayer(onlinePlayer)
                 }
                 onSiteUpdated(site)
             }, 5L)
-            
+
             BuildSiteManager.saveAll()
         } else {
             startFinalPhase(site, player)
@@ -168,6 +170,11 @@ object EasyBuildManager : Listener {
             result.totalCount
         )))
         
+        if (!result.isComplete) {
+            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.structureIncomplete(result.totalCount - result.matchedCount)))
+            return
+        }
+        
         if (result.needsFix) {
             player.sendMessage(legacy.serialize(I18n.Message.EasyBuild.needFix(result.blocksToFix.size)))
             
@@ -180,24 +187,25 @@ object EasyBuildManager : Listener {
             }
         }
         
-        site.startFinalPhase()
-        
-        val rebarKey = site.coreRebarKey
-        if (rebarKey != null) {
-            player.sendMessage(legacy.serialize(I18n.Message.EasyBuild.shellComplete))
-            player.sendMessage(legacy.serialize(I18n.Message.EasyBuild.shellController(rebarKey.key)))
-        } else {
-            player.sendMessage(legacy.serialize(I18n.Message.EasyBuild.shellCompleteNoCore))
-        }
-        
+        site.enterAwaitingCore()
+        EasyBuildManager.onSiteUpdated(site)
+        BuildSiteManager.saveAll()
+
         Bukkit.getScheduler().runTaskLater(MonolithLib.instance, Runnable {
             for (onlinePlayer in Bukkit.getOnlinePlayers()) {
                 site.renderForPlayer(onlinePlayer)
             }
         }, 10L)
-        
-        onSiteUpdated(site)
-        BuildSiteManager.saveAll()
+
+        val rebarKey = site.coreRebarKey
+        if (rebarKey != null) {
+            player.sendMessage(legacy.serialize(I18n.Message.EasyBuild.shellComplete))
+            player.sendMessage(legacy.serialize(I18n.Message.EasyBuild.shellController(rebarKey.key)))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.shellCoreMarker))
+        } else {
+            player.sendMessage(legacy.serialize(I18n.Message.EasyBuild.shellCompleteNoCore))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.shellCoreMarker))
+        }
     }
     
     private fun findTargetGhostBlock(event: PlayerInteractEvent): GhostBlockEntry? {

@@ -144,7 +144,7 @@ object BuildSiteValidator {
         
         val blockPositions = mutableListOf<Vector3i>()
         
-        for (blockEntry in blueprint.shape.blocks) {
+        for (blockEntry in blueprint.assembledShape.blocks) {
             val worldPos = transform.toWorldPosition(
                 controllerPos = controllerPos,
                 relativePos = blockEntry.position,

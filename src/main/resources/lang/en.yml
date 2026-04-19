@@ -62,6 +62,7 @@ message:
     site_cancelled: "<green>[MonolithLib] Build site cancelled! Blueprint returned</green>"
     site_cancelled_broadcast: "<gray>[MonolithLib] Player %player% cancelled build site '%blueprint_id%'</gray>"
     build_block_destroyed: "<yellow>[MonolithLib] Build block destroyed! Golden marker disappeared, build site reverted to layer %layer%</yellow>"
+    structure_disassembled: "<red>[MonolithLib] Core controller destroyed! Structure disassembled, all blocks dropped, build site reset</red>"
     has_active_preview_block_mode: "<red>[MonolithLib] Active build site preview detected, cannot enable build mode</red>"
     preview_expired: "<red>[MonolithLib] Preview expired and auto-cancelled</red>"
     preview_countdown: "<yellow>Preview will auto-cancel in <red>%countdown%s <yellow></yellow>"

@@ -6,23 +6,28 @@ import top.mc506lw.monolith.core.math.Vector3i
 data class BlueprintMeta(
     val displayName: String = "",
     val description: String = "",
-    val author: String = "",
-    val version: String = "1.0",
     val controllerOffset: Vector3i = Vector3i.ZERO
 )
 
 class Blueprint(
     val id: String,
-    val shape: Shape,
+    val stages: Map<BuildStage, Shape>,
     val meta: BlueprintMeta = BlueprintMeta(),
+    val displayEntities: List<DisplayEntityData> = emptyList(),
     val slots: Map<String, Vector3i> = emptyMap(),
     val customData: Map<String, Any> = emptyMap(),
     val controllerRebarKey: NamespacedKey? = null
 ) {
-    val sizeX: Int get() = shape.boundingBox.width
-    val sizeY: Int get() = shape.boundingBox.height
-    val sizeZ: Int get() = shape.boundingBox.depth
-    val blockCount: Int get() = shape.blocks.size
+    val scaffoldShape: Shape get() = stages[BuildStage.SCAFFOLD] ?: stages.values.firstOrNull() ?: Shape.EMPTY
+    val assembledShape: Shape get() = stages[BuildStage.ASSEMBLED] ?: stages.values.firstOrNull() ?: Shape.EMPTY
+
+    val sizeX: Int get() = assembledShape.boundingBox.width
+    val sizeY: Int get() = assembledShape.boundingBox.height
+    val sizeZ: Int get() = assembledShape.boundingBox.depth
+    val blockCount: Int get() = assembledShape.blocks.size
+
+    @Deprecated("Use scaffoldShape or assembledShape", ReplaceWith("assembledShape"))
+    val shape: Shape get() = assembledShape
 
     fun getSlotPosition(slotId: String): Vector3i? = slots[slotId]
     fun getCustomData(key: String): Any? = customData[key]
@@ -33,23 +38,53 @@ class Blueprint(
 
     companion object {
         fun builder(id: String): BlueprintBuilder = BlueprintBuilder(id)
+
+        fun fromSingleShape(id: String, shape: Shape, meta: BlueprintMeta = BlueprintMeta()): Blueprint {
+            return Blueprint(
+                id = id,
+                stages = mapOf(BuildStage.SCAFFOLD to shape, BuildStage.ASSEMBLED to shape),
+                meta = meta
+            )
+        }
+
+        fun fromSingleShape(id: String, shape: Shape, meta: BlueprintMeta, displayEntities: List<DisplayEntityData>?): Blueprint {
+            return Blueprint(
+                id = id,
+                stages = mapOf(BuildStage.SCAFFOLD to shape, BuildStage.ASSEMBLED to shape),
+                meta = meta,
+                displayEntities = displayEntities ?: emptyList()
+            )
+        }
     }
 }
 
 class BlueprintBuilder(private val id: String) {
-    private var shape: Shape? = null
+    private var scaffoldShape: Shape? = null
+    private var assembledShape: Shape? = null
+    private var singleShape: Shape? = null
     private var meta: BlueprintMeta = BlueprintMeta()
+    private val displayEntities = mutableListOf<DisplayEntityData>()
     private val slots = mutableMapOf<String, Vector3i>()
     private val customData = mutableMapOf<String, Any>()
     private var controllerRebarKey: NamespacedKey? = null
 
     fun shape(shape: Shape): BlueprintBuilder {
-        this.shape = shape
+        this.singleShape = shape
         return this
     }
 
     fun shape(blocks: List<BlockEntry>): BlueprintBuilder {
-        this.shape = Shape(blocks)
+        this.singleShape = Shape(blocks)
+        return this
+    }
+
+    fun scaffoldShape(shape: Shape): BlueprintBuilder {
+        this.scaffoldShape = shape
+        return this
+    }
+
+    fun assembledShape(shape: Shape): BlueprintBuilder {
+        this.assembledShape = shape
         return this
     }
 
@@ -63,16 +98,6 @@ class BlueprintBuilder(private val id: String) {
         return this
     }
 
-    fun author(author: String): BlueprintBuilder {
-        this.meta = meta.copy(author = author)
-        return this
-    }
-
-    fun version(version: String): BlueprintBuilder {
-        this.meta = meta.copy(version = version)
-        return this
-    }
-
     fun controllerOffset(x: Int, y: Int, z: Int): BlueprintBuilder {
         this.meta = meta.copy(controllerOffset = Vector3i(x, y, z))
         return this
@@ -80,6 +105,16 @@ class BlueprintBuilder(private val id: String) {
 
     fun controllerOffset(offset: Vector3i): BlueprintBuilder {
         this.meta = meta.copy(controllerOffset = offset)
+        return this
+    }
+
+    fun displayEntity(data: DisplayEntityData): BlueprintBuilder {
+        displayEntities.add(data)
+        return this
+    }
+
+    fun displayEntities(entities: List<DisplayEntityData>): BlueprintBuilder {
+        displayEntities.addAll(entities)
         return this
     }
 
@@ -104,7 +139,27 @@ class BlueprintBuilder(private val id: String) {
     }
 
     fun build(): Blueprint {
-        val finalShape = shape ?: throw IllegalStateException("Blueprint must have a shape")
-        return Blueprint(id, finalShape, meta, slots.toMap(), customData.toMap(), controllerRebarKey)
+        val stages = if (scaffoldShape != null || assembledShape != null) {
+            val scaffold = scaffoldShape ?: assembledShape
+                ?: singleShape
+                ?: throw IllegalStateException("Blueprint must have a shape")
+            val assembled = assembledShape ?: scaffoldShape
+                ?: singleShape
+                ?: throw IllegalStateException("Blueprint must have a shape")
+            mapOf(BuildStage.SCAFFOLD to scaffold, BuildStage.ASSEMBLED to assembled)
+        } else {
+            val shape = singleShape ?: throw IllegalStateException("Blueprint must have a shape")
+            mapOf(BuildStage.SCAFFOLD to shape, BuildStage.ASSEMBLED to shape)
+        }
+
+        return Blueprint(
+            id = id,
+            stages = stages,
+            meta = meta,
+            displayEntities = displayEntities.toList(),
+            slots = slots.toMap(),
+            customData = customData.toMap(),
+            controllerRebarKey = controllerRebarKey
+        )
     }
 }

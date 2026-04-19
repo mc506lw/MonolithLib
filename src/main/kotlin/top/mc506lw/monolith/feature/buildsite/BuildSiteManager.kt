@@ -20,11 +20,13 @@ object BuildSiteManager {
     private val locationIndex = ConcurrentHashMap<String, UUID>()
     private val chunkSites = ConcurrentHashMap<String, MutableSet<UUID>>()
     private var trackingTask: BukkitTask? = null
+    private var autoSaveTask: BukkitTask? = null
     
     private lateinit var dataFolder: File
     private lateinit var saveFile: File
     
     private const val TRACKING_INTERVAL = 5L
+    private const val AUTO_SAVE_INTERVAL = 300L
     private const val UNLOAD_DISTANCE_SQ = BuildSite.UNLOAD_DISTANCE.toLong() * BuildSite.UNLOAD_DISTANCE
     
     fun init(plugin: MonolithLib) {
@@ -34,6 +36,7 @@ object BuildSiteManager {
         
         loadAll()
         startTracking(plugin)
+        startAutoSave(plugin)
     }
     
     fun createSite(
@@ -43,18 +46,38 @@ object BuildSiteManager {
     ): BuildSite? {
         val existing = getSiteAt(anchorLocation)
         if (existing != null) return null
-        
-        val site = BuildSite(
+
+        val world = anchorLocation.world ?: return null
+        if (!world.isChunkLoaded(anchorLocation.blockX shr 4, anchorLocation.blockZ shr 4)) {
+            Bukkit.getLogger().warning("[BuildSiteManager] 目标位置区块未加载，无法创建工地")
+            return null
+        }
+
+        val tempSite = BuildSite(
             id = UUID.randomUUID(),
             blueprint = blueprint,
             anchorLocation = anchorLocation.clone(),
             facing = facing
         )
-        
-        registerSite(site)
+
+        for (existingSite in getAllActiveSites()) {
+            if (existingSite.anchorLocation.world?.name != world.name) continue
+            if (boxesOverlap(tempSite, existingSite)) {
+                Bukkit.getLogger().info("[BuildSiteManager] 新工地与现有工地 ${existingSite.blueprintId} 重叠")
+                return null
+            }
+        }
+
+        registerSite(tempSite)
         saveAll()
-        
-        return site
+
+        return tempSite
+    }
+
+    private fun boxesOverlap(a: BuildSite, b: BuildSite): Boolean {
+        return !(a.boundingMaxX < b.boundingMinX || a.boundingMinX > b.boundingMaxX ||
+                a.boundingMaxY < b.boundingMinY || a.boundingMinY > b.boundingMaxY ||
+                a.boundingMaxZ < b.boundingMinZ || a.boundingMinZ > b.boundingMaxZ)
     }
     
     private fun registerSite(site: BuildSite) {
@@ -84,10 +107,16 @@ object BuildSiteManager {
     fun getSitesInChunk(worldName: String, chunkX: Int, chunkZ: Int): List<BuildSite> {
         val chunkKey = "$worldName|$chunkX|$chunkZ"
         val siteIds = chunkSites[chunkKey] ?: return emptyList()
-        return siteIds.mapNotNull { sites[it] }.filter { it.isActive && !it.isCompleted }
+        return siteIds.mapNotNull { sites[it] }.filter { !it.isCompleted }
     }
     
-    fun getAllActiveSites(): List<BuildSite> = sites.values.filter { it.isActive && !it.isCompleted }
+    fun getAllActiveSites(): List<BuildSite> = sites.values.filter { !it.isCompleted }
+    
+    fun getAllSites(): List<BuildSite> = sites.values.toList()
+    
+    fun isActiveSite(siteId: UUID): Boolean = sites.containsKey(siteId)
+    
+    fun getSiteById(siteId: UUID): BuildSite? = sites[siteId]
     
     fun removeSite(siteId: UUID) {
         val site = sites.remove(siteId) ?: return
@@ -96,6 +125,7 @@ object BuildSiteManager {
         locationIndex.remove(locationKey)
         
         site.removeAllRenderings()
+        EasyBuildManager.onSiteUpdated(site)
         
         val chunkKey = chunkKeyFromLocation(site.anchorLocation)
         chunkSites[chunkKey]?.remove(siteId)
@@ -120,11 +150,11 @@ object BuildSiteManager {
     fun handleChunkUnload(worldName: String, chunkX: Int, chunkZ: Int) {
         val chunkKey = "$worldName|$chunkX|$chunkZ"
         val siteIdsInChunk = chunkSites[chunkKey]?.toList() ?: return
-        
+
         for (siteId in siteIdsInChunk) {
             val site = sites[siteId]
             if (site != null) {
-                site.removeAllRenderings()
+                try { site.removeAllRenderings() } catch (_: Exception) {}
             }
         }
     }
@@ -158,6 +188,12 @@ object BuildSiteManager {
             tickTracking()
         }, TRACKING_INTERVAL, TRACKING_INTERVAL)
     }
+
+    private fun startAutoSave(plugin: MonolithLib) {
+        autoSaveTask = Bukkit.getScheduler().runTaskTimer(plugin, Runnable {
+            saveAll()
+        }, AUTO_SAVE_INTERVAL, AUTO_SAVE_INTERVAL)
+    }
     
     private fun tickTracking() {
         for (player in Bukkit.getOnlinePlayers()) {
@@ -168,6 +204,8 @@ object BuildSiteManager {
     fun stopTracking() {
         trackingTask?.cancel()
         trackingTask = null
+        autoSaveTask?.cancel()
+        autoSaveTask = null
     }
     
     fun cleanup() {
@@ -243,7 +281,11 @@ object BuildSiteManager {
         val placedStr = data["placed_blocks"] as? String ?: ""
         
         val api = try { MonolithAPI.getInstance() } catch (_: Exception) { return }
-        val blueprint = api.registry.getBlueprint(blueprintId) ?: return
+        val blueprint = api.registry.get(blueprintId)
+        if (blueprint == null) {
+            println("[MonolithLib] 警告: 蓝图 $blueprintId 已不存在，工地 $idStr 将被跳过 (位置: $worldName,$x,$y,$z)")
+            return
+        }
         
         val world = Bukkit.getWorld(worldName) ?: return
         val location = Location(world, x.toDouble(), y.toDouble(), z.toDouble())
@@ -278,7 +320,7 @@ object BuildSiteManager {
             val lines = mutableListOf<String>()
             
             for ((_, site) in sites) {
-                if (!site.isActive || site.isCompleted) continue
+                if (site.isCompleted) continue
                 
                 lines.add("site: ${site.id}")
                 lines.add("  blueprint_id: ${site.blueprintId}")

@@ -12,6 +12,8 @@ import java.util.concurrent.CompletableFuture
 
 object RebarTrigger {
     
+    private val logger = MonolithLib.instance.logger
+    
     fun triggerFormation(controllerLocation: Location): CompletableFuture<Boolean> {
         val future = CompletableFuture<Boolean>()
         
@@ -26,17 +28,31 @@ object RebarTrigger {
     fun triggerFormationSync(controllerLocation: Location): Boolean {
         val block = controllerLocation.block
         
-        val rebarBlock = BlockStorage.get(block) ?: return false
+        logger.info("[RebarTrigger] 尝试触发多方块形成 at ${block.location}")
+        logger.info("[RebarTrigger] 方块类型: ${block.type}, BlockData: ${block.blockData.asString}")
+        
+        val rebarBlock = BlockStorage.get(block)
+        if (rebarBlock == null) {
+            logger.warning("[RebarTrigger] 未找到 Rebar 方块 at ${block.location}")
+            return false
+        }
+        
+        logger.info("[RebarTrigger] 找到 Rebar 方块: ${rebarBlock.schema.key}")
         
         if (rebarBlock !is RebarMultiblock) {
+            logger.warning("[RebarTrigger] Rebar 方块不是 RebarMultiblock 类型")
             return false
         }
         
         try {
             val multiblock = rebarBlock as RebarMultiblock
             
-            if (multiblock.checkFormed()) {
+            val isFormed = multiblock.checkFormed()
+            logger.info("[RebarTrigger] checkFormed() = $isFormed")
+            
+            if (isFormed) {
                 if (!multiblock.isFormedAndFullyLoaded()) {
+                    logger.info("[RebarTrigger] 调用 onMultiblockFormed()")
                     multiblock.onMultiblockFormed()
                 }
                 return true
@@ -44,6 +60,8 @@ object RebarTrigger {
             
             return false
         } catch (e: Exception) {
+            logger.severe("[RebarTrigger] 触发多方块形成异常: ${e.message}")
+            e.printStackTrace()
             return false
         }
     }

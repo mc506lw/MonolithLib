@@ -70,7 +70,7 @@ class BlueprintLifecycle(
     }
     
     private fun buildPositionCache() {
-        val shape = blueprint.shape
+        val shape = blueprint.assembledShape
         val centerOffset = blueprint.meta.controllerOffset
         
         for (blockEntry in shape.blocks) {

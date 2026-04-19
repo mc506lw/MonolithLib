@@ -2,20 +2,26 @@ package top.mc506lw.monolith.core.io.formats
 
 import org.bukkit.Bukkit
 import org.bukkit.NamespacedKey
+import org.bukkit.inventory.ItemStack
 import top.mc506lw.monolith.core.io.StructureSerializer
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.BlockEntry
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.model.BlueprintMeta
+import top.mc506lw.monolith.core.model.BuildStage
+import top.mc506lw.monolith.core.model.DisplayEntityData
+import top.mc506lw.monolith.core.model.DisplayType
 import top.mc506lw.monolith.core.model.Shape
 import top.mc506lw.monolith.validation.predicate.*
+import org.joml.Quaternionf
+import org.joml.Vector3f
 import java.io.*
 import java.util.logging.Level
 
 object BinaryFormat : StructureSerializer {
     
     private const val MAGIC: Int = 0x4D4E4231
-    private const val CURRENT_VERSION = 3
+    private const val CURRENT_VERSION = 4
     
     override val formatName: String = "Monolith Binary"
     override val fileExtension: String = ".mnb"
@@ -48,10 +54,18 @@ object BinaryFormat : StructureSerializer {
             
             writeString(dos, blueprint.id)
             
-            val shape = blueprint.shape
-            dos.writeShort(shape.boundingBox.width)
-            dos.writeShort(shape.boundingBox.height)
-            dos.writeShort(shape.boundingBox.depth)
+            val scaffoldShape = blueprint.scaffoldShape
+            val assembledShape = blueprint.assembledShape
+            val hasDualStage = scaffoldShape !== assembledShape && 
+                scaffoldShape.blocks != assembledShape.blocks
+            
+            dos.writeBoolean(hasDualStage)
+            
+            writeShape(dos, assembledShape)
+            
+            if (hasDualStage) {
+                writeShape(dos, scaffoldShape)
+            }
             
             val centerOffset = blueprint.meta.controllerOffset
             dos.writeShort(centerOffset.x)
@@ -66,8 +80,6 @@ object BinaryFormat : StructureSerializer {
             
             writeString(dos, blueprint.meta.displayName)
             writeString(dos, blueprint.meta.description)
-            writeString(dos, blueprint.meta.author)
-            writeString(dos, blueprint.meta.version)
             
             dos.writeInt(blueprint.slots.size)
             for ((slotId, pos) in blueprint.slots) {
@@ -83,147 +95,372 @@ object BinaryFormat : StructureSerializer {
                 writeValue(dos, value)
             }
             
-            dos.writeInt(shape.blocks.size)
-            
-            for (blockEntry in shape.blocks) {
-                dos.writeShort(blockEntry.position.x)
-                dos.writeShort(blockEntry.position.y)
-                dos.writeShort(blockEntry.position.z)
-                
-                val predicate = Predicates.strict(blockEntry.blockData)
-                writePredicate(dos, predicate)
-                
-                writeString(dos, blockEntry.blockData.asString)
-            }
+            writeDisplayEntities(dos, blueprint.displayEntities)
         }
     }
     
     override fun serialize(blueprint: Blueprint, output: OutputStream) {
-        @Suppress("UNCHECKED_CAST")
-        serialize(blueprint as Blueprint, output, CURRENT_VERSION, "")
+        serialize(blueprint, output, CURRENT_VERSION, "")
     }
     
-    override fun deserialize(input: InputStream): Blueprint {
-        DataInputStream(BufferedInputStream(input)).use { dis ->
-            val magic = dis.readInt()
-            require(magic == MAGIC) { "无效的 Monolith Binary 文件" }
-            
-            val version = dis.readInt()
-            require(version <= CURRENT_VERSION) { "不支持的版本: $version" }
-            
-            val formatVersion = if (version >= 3) dis.readInt() else 1
-            val configHash = if (version >= 3) readString(dis) else ""
-            
-            val id = readString(dis)
-            val sizeX = dis.readUnsignedShort()
-            val sizeY = dis.readUnsignedShort()
-            val sizeZ = dis.readUnsignedShort()
-            
-            val centerX = dis.readShort().toInt()
-            val centerY = dis.readShort().toInt()
-            val centerZ = dis.readShort().toInt()
-            
-            val controllerRebarKey = if (version >= 3 && dis.readBoolean()) {
-                parseNamespacedKey(readString(dis))
-            } else null
-            
-            val meta = if (version >= 3) {
-                BlueprintMeta(
-                    displayName = readString(dis),
-                    description = readString(dis),
-                    author = readString(dis),
-                    version = readString(dis),
-                    controllerOffset = Vector3i(centerX, centerY, centerZ)
-                )
-            } else BlueprintMeta(controllerOffset = Vector3i(centerX, centerY, centerZ))
-            
-            val slots = mutableMapOf<String, Vector3i>()
-            if (version >= 3) {
-                val slotCount = dis.readInt()
-                repeat(slotCount) {
-                    val slotId = readString(dis)
-                    val x = dis.readShort().toInt()
-                    val y = dis.readShort().toInt()
-                    val z = dis.readShort().toInt()
-                    slots[slotId] = Vector3i(x, y, z)
-                }
+    override fun deserialize(input: InputStream): Blueprint? {
+        return try {
+            DataInputStream(BufferedInputStream(input)).use { dis ->
+                deserializeFromStream(dis)
             }
-            
-            val customData = mutableMapOf<String, Any>()
-            if (version >= 3) {
-                val dataCount = dis.readInt()
-                repeat(dataCount) {
-                    val key = readString(dis)
-                    val value = readValue(dis)
-                    customData[key] = value
-                }
-            }
-            
-            val blockCount = dis.readInt()
-            Bukkit.getLogger().info("[MonolithLib] BinaryFormat 诊断: version=$version, blockCount=$blockCount, id=$id")
-            val blocks = mutableListOf<BlockEntry>()
-            var skippedBlocks = 0
-            
-            repeat(blockCount) { blockIndex ->
-                var x = 0
-                var y = 0
-                var z = 0
-                try {
-                    x = dis.readShort().toInt()
-                    y = dis.readShort().toInt()
-                    z = dis.readShort().toInt()
-                    
-                    val predicate = if (version >= 3) {
-                        readPredicate(dis)
-                    } else {
-                        val blockDataStr = readString(dis)
-                        val blockData = if (blockDataStr.isNotEmpty()) {
-                            try { Bukkit.createBlockData(blockDataStr) } catch (e: Exception) { null }
-                        } else null
-                        if (blockData != null) StrictPredicate(blockData) else AirPredicate
-                    }
-                    
-                    val blockDataStr = readString(dis)
-                    val blockData = if (blockDataStr.isNotEmpty()) {
-                        try { Bukkit.createBlockData(blockDataStr) } catch (e: Exception) { null }
-                    } else predicate.previewBlockData
-                    
-                    if (blockData != null) {
-                        blocks.add(BlockEntry(
-                            position = Vector3i(x, y, z),
-                            blockData = blockData
-                        ))
-                    } else {
-                        skippedBlocks++
-                    }
-                } catch (e: EOFException) {
-                    if (blockIndex == 0) {
-                        Bukkit.getLogger().warning("[MonolithLib] 第一个方块读取失败 (EOF): version=$version, 位置已读取: ($x,$y,$z)")
-                    }
-                    skippedBlocks++
-                } catch (e: Exception) {
-                    if (blockIndex == 0) {
-                        Bukkit.getLogger().warning("[MonolithLib] 第一个方块读取失败: ${e.message}")
-                    }
-                    skippedBlocks++
-                }
-            }
-            
-            if (skippedBlocks > 0) {
-                Bukkit.getLogger().warning("[MonolithLib] 跳过 $skippedBlocks 个损坏的方块数据 (文件版本: $version)")
-            }
-            
-            val shape = Shape(blocks)
-            
-            return Blueprint(
-                id = id,
-                shape = shape,
-                meta = meta,
-                slots = slots.toMap(),
-                customData = customData.toMap(),
-                controllerRebarKey = controllerRebarKey
-            )
+        } catch (e: Exception) {
+            Bukkit.getLogger().log(Level.WARNING, "[MonolithLib] BinaryFormat 反序列化失败", e)
+            null
         }
+    }
+    
+    private fun deserializeFromStream(dis: DataInputStream): Blueprint {
+        val magic = dis.readInt()
+        require(magic == MAGIC) { "无效的 Monolith Binary 文件" }
+        
+        val version = dis.readInt()
+        require(version <= CURRENT_VERSION) { "不支持的版本: $version" }
+        
+        return if (version >= 4) {
+            deserializeV4(dis, version)
+        } else {
+            deserializeLegacy(dis, version)
+        }
+    }
+    
+    private fun deserializeV4(dis: DataInputStream, version: Int): Blueprint {
+        val formatVersion = dis.readInt()
+        val configHash = readString(dis)
+        
+        val id = readString(dis)
+        
+        val hasDualStage = dis.readBoolean()
+        
+        val assembledShape = readShape(dis)
+        
+        val scaffoldShape = if (hasDualStage) {
+            readShape(dis)
+        } else {
+            assembledShape
+        }
+        
+        val centerX = dis.readShort().toInt()
+        val centerY = dis.readShort().toInt()
+        val centerZ = dis.readShort().toInt()
+        
+        val controllerRebarKey = if (dis.readBoolean()) {
+            parseNamespacedKey(readString(dis))
+        } else null
+        
+        val displayName = readString(dis)
+        val description = readString(dis)
+        
+        val meta = BlueprintMeta(
+            displayName = displayName,
+            description = description,
+            controllerOffset = Vector3i(centerX, centerY, centerZ)
+        )
+        
+        val slots = mutableMapOf<String, Vector3i>()
+        val slotCount = dis.readInt()
+        repeat(slotCount) {
+            val slotId = readString(dis)
+            val x = dis.readShort().toInt()
+            val y = dis.readShort().toInt()
+            val z = dis.readShort().toInt()
+            slots[slotId] = Vector3i(x, y, z)
+        }
+        
+        val customData = mutableMapOf<String, Any>()
+        val dataCount = dis.readInt()
+        repeat(dataCount) {
+            val key = readString(dis)
+            val value = readValue(dis)
+            customData[key] = value
+        }
+        
+        val displayEntities = readDisplayEntities(dis)
+        
+        val stages = if (hasDualStage) {
+            mapOf(BuildStage.SCAFFOLD to scaffoldShape, BuildStage.ASSEMBLED to assembledShape)
+        } else {
+            mapOf(BuildStage.SCAFFOLD to assembledShape, BuildStage.ASSEMBLED to assembledShape)
+        }
+        
+        return Blueprint(
+            id = id,
+            stages = stages,
+            meta = meta,
+            displayEntities = displayEntities,
+            slots = slots.toMap(),
+            customData = customData.toMap(),
+            controllerRebarKey = controllerRebarKey
+        )
+    }
+    
+    @Suppress("DEPRECATION")
+    private fun deserializeLegacy(dis: DataInputStream, version: Int): Blueprint {
+        val formatVersion = if (version >= 3) dis.readInt() else 1
+        val configHash = if (version >= 3) readString(dis) else ""
+        
+        val id = readString(dis)
+        val sizeX = dis.readUnsignedShort()
+        val sizeY = dis.readUnsignedShort()
+        val sizeZ = dis.readUnsignedShort()
+        
+        val centerX = dis.readShort().toInt()
+        val centerY = dis.readShort().toInt()
+        val centerZ = dis.readShort().toInt()
+        
+        val controllerRebarKey = if (version >= 3 && dis.readBoolean()) {
+            parseNamespacedKey(readString(dis))
+        } else null
+        
+        val meta = if (version >= 3) {
+            BlueprintMeta(
+                displayName = readString(dis),
+                description = readString(dis),
+                controllerOffset = Vector3i(centerX, centerY, centerZ)
+            ).also {
+                @Suppress("UNUSED_EXPRESSION")
+                if (version >= 3) { readString(dis) }
+                if (version >= 3) { readString(dis) }
+            }
+        } else BlueprintMeta(controllerOffset = Vector3i(centerX, centerY, centerZ))
+        
+        val slots = mutableMapOf<String, Vector3i>()
+        if (version >= 3) {
+            val slotCount = dis.readInt()
+            repeat(slotCount) {
+                val slotId = readString(dis)
+                val x = dis.readShort().toInt()
+                val y = dis.readShort().toInt()
+                val z = dis.readShort().toInt()
+                slots[slotId] = Vector3i(x, y, z)
+            }
+        }
+        
+        val customData = mutableMapOf<String, Any>()
+        if (version >= 3) {
+            val dataCount = dis.readInt()
+            repeat(dataCount) {
+                val key = readString(dis)
+                val value = readValue(dis)
+                customData[key] = value
+            }
+        }
+        
+        val blockCount = dis.readInt()
+        Bukkit.getLogger().info("[MonolithLib] BinaryFormat 诊断 (legacy v$version): blockCount=$blockCount, id=$id")
+        val blocks = readBlockEntries(dis, blockCount, version)
+        
+        val shape = Shape(blocks)
+        
+        return Blueprint(
+            id = id,
+            stages = mapOf(BuildStage.SCAFFOLD to shape, BuildStage.ASSEMBLED to shape),
+            meta = meta,
+            slots = slots.toMap(),
+            customData = customData.toMap(),
+            controllerRebarKey = controllerRebarKey
+        )
+    }
+    
+    private fun readBlockEntries(dis: DataInputStream, blockCount: Int, version: Int): List<BlockEntry> {
+        val blocks = mutableListOf<BlockEntry>()
+        var skippedBlocks = 0
+        
+        repeat(blockCount) { blockIndex ->
+            try {
+                val x = dis.readShort().toInt()
+                val y = dis.readShort().toInt()
+                val z = dis.readShort().toInt()
+                
+                val predicate = if (version >= 3) {
+                    readPredicate(dis)
+                } else {
+                    val blockDataStr = readString(dis)
+                    if (blockDataStr.isNotEmpty()) {
+                        try { 
+                            val bd = Bukkit.createBlockData(blockDataStr)
+                            StrictPredicate(bd)
+                        } catch (_: Exception) { null }
+                    } else null
+                }
+                
+                val blockDataStr = readString(dis)
+                val blockData = if (blockDataStr.isNotEmpty()) {
+                    try { Bukkit.createBlockData(blockDataStr) } catch (_: Exception) { null }
+                } else predicate?.previewBlockData
+                
+                if (blockData != null) {
+                    val effectivePredicate = if (predicate is RebarPredicate) predicate else null
+                    blocks.add(BlockEntry(
+                        position = Vector3i(x, y, z),
+                        blockData = blockData,
+                        predicate = effectivePredicate
+                    ))
+                } else {
+                    skippedBlocks++
+                }
+            } catch (_: EOFException) {
+                skippedBlocks++
+            } catch (_: Exception) {
+                skippedBlocks++
+            }
+        }
+        
+        if (skippedBlocks > 0) {
+            Bukkit.getLogger().warning("[MonolithLib] 跳过 $skippedBlocks 个损坏的方块数据 (文件版本: $version)")
+        }
+        
+        return blocks
+    }
+    
+    private fun writeShape(dos: DataOutputStream, shape: Shape) {
+        dos.writeShort(shape.boundingBox.width)
+        dos.writeShort(shape.boundingBox.height)
+        dos.writeShort(shape.boundingBox.depth)
+        
+        dos.writeInt(shape.blocks.size)
+        
+        for (blockEntry in shape.blocks) {
+            dos.writeShort(blockEntry.position.x)
+            dos.writeShort(blockEntry.position.y)
+            dos.writeShort(blockEntry.position.z)
+            
+            writePredicate(dos, blockEntry.effectivePredicate)
+            
+            writeString(dos, blockEntry.blockData.asString)
+        }
+    }
+    
+    private fun readShape(dis: DataInputStream): Shape {
+        val sizeX = dis.readUnsignedShort()
+        val sizeY = dis.readUnsignedShort()
+        val sizeZ = dis.readUnsignedShort()
+        
+        val blockCount = dis.readInt()
+        val blocks = readBlockEntries(dis, blockCount, Int.MAX_VALUE)
+        
+        return Shape(blocks)
+    }
+    
+    private fun writeDisplayEntities(dos: DataOutputStream, entities: List<DisplayEntityData>) {
+        dos.writeInt(entities.size)
+        for (entity in entities) {
+            dos.writeShort(entity.position.x)
+            dos.writeShort(entity.position.y)
+            dos.writeShort(entity.position.z)
+            
+            dos.writeByte(when (entity.entityType) {
+                DisplayType.BLOCK -> 0
+                DisplayType.ITEM -> 1
+            })
+            
+            writeQuaternionf(dos, entity.rotation)
+            writeVector3f(dos, entity.scale)
+            writeVector3f(dos, entity.translation)
+            
+            val hasBlockData = entity.blockData != null
+            dos.writeBoolean(hasBlockData)
+            if (hasBlockData) {
+                writeString(dos, entity.blockData.asString)
+            }
+            
+            val hasItemStack = entity.itemStack != null
+            dos.writeBoolean(hasItemStack)
+            if (hasItemStack) {
+                writeItemStack(dos, entity.itemStack)
+            }
+        }
+    }
+    
+    private fun readDisplayEntities(dis: DataInputStream): List<DisplayEntityData> {
+        val count = dis.readInt()
+        val entities = mutableListOf<DisplayEntityData>()
+        
+        repeat(count) {
+            try {
+                val x = dis.readShort().toInt()
+                val y = dis.readShort().toInt()
+                val z = dis.readShort().toInt()
+                
+                val typeByte = dis.readUnsignedByte()
+                val entityType = when (typeByte) {
+                    0 -> DisplayType.BLOCK
+                    else -> DisplayType.ITEM
+                }
+                
+                val rotation = readQuaternionf(dis)
+                val scale = readVector3f(dis)
+                val translation = readVector3f(dis)
+                
+                val blockData = if (dis.readBoolean()) {
+                    val str = readString(dis)
+                    try { Bukkit.createBlockData(str) } catch (_: Exception) { null }
+                } else null
+                
+                val itemStack = if (dis.readBoolean()) {
+                    readItemStack(dis)
+                } else null
+                
+                entities.add(DisplayEntityData(
+                    position = Vector3i(x, y, z),
+                    entityType = entityType,
+                    rotation = rotation,
+                    scale = scale,
+                    translation = translation,
+                    blockData = blockData,
+                    itemStack = itemStack
+                ))
+            } catch (_: Exception) {
+                Bukkit.getLogger().warning("[MonolithLib] 读取显示实体失败，跳过")
+            }
+        }
+        
+        return entities
+    }
+    
+    private fun writeQuaternionf(dos: DataOutputStream, q: Quaternionf) {
+        dos.writeFloat(q.x)
+        dos.writeFloat(q.y)
+        dos.writeFloat(q.z)
+        dos.writeFloat(q.w)
+    }
+    
+    private fun readQuaternionf(dis: DataInputStream): Quaternionf {
+        val x = dis.readFloat()
+        val y = dis.readFloat()
+        val z = dis.readFloat()
+        val w = dis.readFloat()
+        return Quaternionf(x, y, z, w)
+    }
+    
+    private fun writeVector3f(dos: DataOutputStream, v: Vector3f) {
+        dos.writeFloat(v.x)
+        dos.writeFloat(v.y)
+        dos.writeFloat(v.z)
+    }
+    
+    private fun readVector3f(dis: DataInputStream): Vector3f {
+        val x = dis.readFloat()
+        val y = dis.readFloat()
+        val z = dis.readFloat()
+        return Vector3f(x, y, z)
+    }
+    
+    private fun writeItemStack(dos: DataOutputStream, item: ItemStack) {
+        val bytes = item.serializeAsBytes()
+        dos.writeInt(bytes.size)
+        dos.write(bytes)
+    }
+    
+    private fun readItemStack(dis: DataInputStream): ItemStack {
+        val length = dis.readInt()
+        val bytes = ByteArray(length)
+        dis.readFully(bytes)
+        return ItemStack.deserializeBytes(bytes)
     }
     
     private fun writePredicate(dos: DataOutputStream, predicate: Predicate) {

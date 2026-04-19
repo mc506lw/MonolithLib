@@ -96,7 +96,7 @@ class PreviewSession(
     }
     
     private fun initializeGhostBlocks() {
-        val shape: Shape = blueprint.shape
+        val shape: Shape = blueprint.assembledShape
         val centerOffset = blueprint.meta.controllerOffset
         val rotationSteps = transform.facing.rotationSteps
         

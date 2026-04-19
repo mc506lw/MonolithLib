@@ -12,14 +12,12 @@ import top.mc506lw.monolith.validation.predicate.*
 object ProductBuilder {
     
     fun build(baseBlueprint: Blueprint, config: BlueprintConfig): Blueprint {
-        val baseShape: Shape = baseBlueprint.shape
+        val baseShape: Shape = baseBlueprint.assembledShape
         
         val builder = Blueprint.builder(config.id)
             .shape(baseShape)
             .displayName(config.metaName ?: baseBlueprint.meta.displayName)
             .description(config.metaDescription ?: baseBlueprint.meta.description)
-            .author(config.metaAuthor ?: baseBlueprint.meta.author)
-            .version(config.version ?: baseBlueprint.meta.version)
             .controllerOffset(config.controllerPosition ?: baseBlueprint.meta.controllerOffset)
         
         if (config.controllerRebarKey != null) {

@@ -21,6 +21,7 @@ object MonolithTabCompleter : TabCompleter {
         return when (args.size) {
             1 -> getSubCommands(args[0])
             2 -> getSecondArg(args[0], args[1])
+            3 -> getThirdArg(args[0], args[2])
             else -> emptyList()
         }
     }
@@ -28,7 +29,8 @@ object MonolithTabCompleter : TabCompleter {
     private fun getSubCommands(prefix: String): List<String> {
         val commands = listOf(
             "reload", "list", "info",
-            "preview", "build", "blueprint", "litematica"
+            "preview", "build", "blueprint",
+            "litematica", "wand", "save", "merge"
         )
         return commands.filter { it.startsWith(prefix.lowercase()) }
     }
@@ -47,9 +49,18 @@ object MonolithTabCompleter : TabCompleter {
             }
             "info", "blueprint" -> {
                 val api = MonolithAPI.getInstance()
-                api.registry.getAllBlueprints().keys
+                api.registry.getAll().keys
                     .filter { it.startsWith(prefix.lowercase()) }
                     .take(10)
+            }
+            else -> emptyList()
+        }
+    }
+    
+    private fun getThirdArg(subCommand: String, prefix: String): List<String> {
+        return when (subCommand.lowercase()) {
+            "save" -> {
+                listOf("--scaffold", "--assembled").filter { it.startsWith(prefix.lowercase()) }
             }
             else -> emptyList()
         }

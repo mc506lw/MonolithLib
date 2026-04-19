@@ -498,6 +498,7 @@ object I18n {
                 "message.buildsite.build_block_destroyed",
                 arg("layer", layer)
             )
+            val structureDisassembled = translatable("message.buildsite.structure_disassembled")
             val hasActivePreviewBlockMode = translatable("message.buildsite.has_active_preview_block_mode")
             val previewExpired = translatable("message.buildsite.preview_expired")
             fun previewCountdown(countdown: Int) = translatable(

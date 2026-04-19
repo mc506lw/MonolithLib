@@ -2,11 +2,16 @@ package top.mc506lw.monolith.core.model
 
 import org.bukkit.block.data.BlockData
 import top.mc506lw.monolith.core.math.Vector3i
+import top.mc506lw.monolith.validation.predicate.Predicate
+import top.mc506lw.monolith.validation.predicate.Predicates
 
 data class BlockEntry(
     val position: Vector3i,
-    val blockData: BlockData
-)
+    val blockData: BlockData,
+    val predicate: Predicate? = null
+) {
+    val effectivePredicate: Predicate get() = predicate ?: Predicates.strict(blockData)
+}
 
 data class BoundingBox(
     val minX: Int,

@@ -62,6 +62,7 @@ message:
     site_cancelled: "<green>[MonolithLib] 工地已取消! 蓝图已返还</green>"
     site_cancelled_broadcast: "<gray>[MonolithLib] 玩家 %player% 取消了工地 '%blueprint_id%'</gray>"
     build_block_destroyed: "<yellow>[MonolithLib] 工地方块被破坏! 金色标记已消失，工地回退到第 %layer% 层</yellow>"
+    structure_disassembled: "<red>[MonolithLib] 核心控制器被破坏！整个结构已解体，所有方块已掉落，工地回到初始状态</red>"
     has_active_preview_block_mode: "<red>[MonolithLib] 当前有活跃的工地预览，无法开启建造模式</red>"
     preview_expired: "<red>[MonolithLib] 预览已超时自动取消</red>"
     preview_countdown: "<yellow>预览将在 <red>%countdown%秒 <yellow>后自动取消</yellow>"

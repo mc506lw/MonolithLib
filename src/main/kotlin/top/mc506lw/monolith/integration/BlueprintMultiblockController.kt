@@ -21,7 +21,7 @@ abstract class BlueprintMultiblockController(
     
     protected val adapter: BlueprintMultiblockAdapter? by lazy {
         val api = try { MonolithAPI.getInstance() } catch (_: IllegalStateException) { null }
-        val blueprint = api?.registry?.getBlueprint(blueprintId) ?: return@lazy null
+        val blueprint = api?.registry?.get(blueprintId) ?: return@lazy null
         
         val facing = detectFacing()
         BlueprintMultiblockAdapter(blueprint, block.location, facing)

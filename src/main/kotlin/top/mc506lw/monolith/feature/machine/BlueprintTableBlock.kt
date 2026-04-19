@@ -130,7 +130,7 @@ class BlueprintTableBlock(
 
     private fun safeLoadBlueprints(): List<Blueprint> {
         return try {
-            MonolithAPI.getInstance().registry.getAllBlueprints().values.toList()
+            MonolithAPI.getInstance().registry.getAll().values.toList()
         } catch (e: Exception) {
             MonolithLib.instance.logger.warning("[蓝图桌] 加载蓝图失败: ${e.message}")
             emptyList()

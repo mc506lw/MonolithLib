@@ -12,6 +12,7 @@ import java.util.logging.Level
 import top.mc506lw.monolith.core.model.BlockEntry
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.model.BlueprintMeta
+import top.mc506lw.monolith.core.model.BuildStage
 import top.mc506lw.monolith.core.model.Shape
 import java.io.*
 import java.util.zip.GZIPInputStream
@@ -102,7 +103,7 @@ object SchemFormat : StructureSerializer {
         
         return Blueprint(
             id = blueprintId,
-            shape = shape,
+            stages = mapOf(BuildStage.SCAFFOLD to shape, BuildStage.ASSEMBLED to shape),
             meta = BlueprintMeta(
                 displayName = blueprintId
             )

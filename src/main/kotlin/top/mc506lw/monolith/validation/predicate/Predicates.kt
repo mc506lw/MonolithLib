@@ -65,6 +65,10 @@ object Predicates {
         return RebarPredicate(nsKey, preview)
     }
     
+    fun material(material: Material): Predicate {
+        return MaterialPredicate(material)
+    }
+
     fun any(): Predicate = AnyPredicate
     
     private fun parseNamespacedKey(key: String): NamespacedKey {

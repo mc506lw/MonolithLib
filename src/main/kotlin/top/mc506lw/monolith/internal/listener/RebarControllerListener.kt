@@ -20,7 +20,7 @@ object RebarControllerListener : Listener {
         val rebarBlock = BlockStorage.get(block) ?: return
         
         val api = MonolithAPI.getInstance()
-        val blueprints = api.registry.getBlueprintsByControllerKey(rebarBlock.key)
+        val blueprints = api.registry.getByControllerKey(rebarBlock.key)
         if (blueprints.isEmpty()) return
         
         val blueprint = blueprints.first()
@@ -28,7 +28,7 @@ object RebarControllerListener : Listener {
         player.sendMessage(I18n.Message.Structure.controllerDetected(rebarBlock.key.toString()))
         player.sendMessage(I18n.Message.Structure.associatedStructure(blueprint.id))
         
-        if (blueprint.shape.blocks.isEmpty()) {
+        if (blueprint.assembledShape.blocks.isEmpty()) {
             player.sendMessage(I18n.Message.Structure.noBlocks)
             player.sendMessage(I18n.Message.Structure.addBlocksHint)
             return
@@ -40,7 +40,7 @@ object RebarControllerListener : Listener {
         if (session != null) {
             player.sendMessage(I18n.Message.Preview.started(blueprint.id, facing.name))
             player.sendMessage(I18n.Message.Preview.currentLayer(session.currentLayer, session.maxLayer))
-            player.sendMessage(I18n.Message.Structure.blockCount(blueprint.shape.blocks.size))
+            player.sendMessage(I18n.Message.Structure.blockCount(blueprint.assembledShape.blocks.size))
         }
     }
     

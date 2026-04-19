@@ -27,6 +27,8 @@ import top.mc506lw.monolith.feature.buildsite.BuildSiteListener
 import top.mc506lw.monolith.internal.listener.MonolithBlockListener
 import top.mc506lw.monolith.internal.listener.RebarControllerListener
 import top.mc506lw.monolith.internal.scheduler.TickScheduler
+import top.mc506lw.monolith.internal.selection.SelectionManager
+import top.mc506lw.monolith.internal.selection.SelectionWand
 import top.mc506lw.monolith.test.TestModule
 import top.mc506lw.monolith.feature.machine.BlueprintTableMachine
 import java.io.File
@@ -113,6 +115,9 @@ class MonolithLib : JavaPlugin(), RebarAddon {
             args[0].equals("build", ignoreCase = true) -> handleBuild(sender, args)
             args[0].equals("blueprint", ignoreCase = true) -> handleBlueprint(sender, args)
             args[0].equals("litematica", ignoreCase = true) -> handleLitematica(sender, args)
+            args[0].equals("wand", ignoreCase = true) -> handleWand(sender)
+            args[0].equals("save", ignoreCase = true) -> handleSave(sender, args)
+            args[0].equals("merge", ignoreCase = true) -> handleMerge(sender, args)
             else -> sendHelp(sender)
         }
         
@@ -163,14 +168,13 @@ class MonolithLib : JavaPlugin(), RebarAddon {
     private fun registerCommands() {
         getCommand("monolith")?.setExecutor(this)
         getCommand("monolith")?.tabCompleter = top.mc506lw.monolith.internal.command.MonolithTabCompleter
-        getCommand("mltest")?.setExecutor(TestModule)
     }
-    
+
     private fun initTestModule() {
         try {
             TestModule.init()
         } catch (e: Exception) {
-            logWarning("测试模块初始化失败: ${e.message}")
+            logWarning("示例模块初始化失败: ${e.message}")
         }
     }
 
@@ -180,13 +184,19 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         } catch (e: Exception) {
             logWarning("机器模块初始化失败: ${e.message}")
         }
+        
+        try {
+            io.github.pylonmc.rebar.item.RebarItem.register(SelectionWand::class.java, SelectionWand.STACK, SelectionWand.KEY)
+        } catch (e: Exception) {
+            logWarning("选区魔杖初始化失败: ${e.message}")
+        }
     }
 
     private fun loadStructures() {
         val blueprints = ioModule.loadAllBlueprints()
         
         blueprints.forEach { blueprint ->
-            api.registry.registerBlueprint(blueprint)
+            api.registry.register(blueprint)
             log("注册蓝图: ${blueprint.id} (${blueprint.sizeX}x${blueprint.sizeY}x${blueprint.sizeZ}, ${blueprint.blockCount} 非空方块)")
         }
         
@@ -206,7 +216,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         
         val blueprints = ioModule.loadAllBlueprints()
         blueprints.forEach { blueprint ->
-            api.registry.registerBlueprint(blueprint)
+            api.registry.register(blueprint)
         }
         
         sender.sendMessage(I18n.Message.Command.Reload.complete(blueprints.size))
@@ -223,7 +233,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
             return null
         }
         
-        val blueprints = api.registry.getAllBlueprints().values.filter { 
+        val blueprints = api.registry.getAll().values.filter { 
             it.controllerRebarKey == rebarBlock.key 
         }
         if (blueprints.isEmpty()) {
@@ -334,7 +344,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         }
 
         val blueprintId = args[1]
-        val blueprint = api.registry.getBlueprint(blueprintId)
+        val blueprint = api.registry.get(blueprintId)
 
         if (blueprint == null) {
             sender.sendMessage(I18n.Message.Command.Blueprint.notFound(blueprintId))
@@ -354,7 +364,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
     }
 
     private fun handleList(sender: CommandSender) {
-        val blueprints = api.registry.getAllBlueprints()
+        val blueprints = api.registry.getAll()
         
         if (blueprints.isEmpty()) {
             sender.sendMessage(I18n.Message.Command.List.empty)
@@ -420,7 +430,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
     private fun handleInfo(sender: CommandSender, args: Array<out String>) {
         if (args.size >= 2) {
             val blueprintId = args[1]
-            val blueprint = api.registry.getBlueprint(blueprintId)
+            val blueprint = api.registry.get(blueprintId)
             if (blueprint == null) {
                 sender.sendMessage(I18n.Message.Command.Info.blueprintNotFound(blueprintId))
                 return
@@ -517,6 +527,275 @@ class MonolithLib : JavaPlugin(), RebarAddon {
             else -> {
                 sender.sendMessage(I18n.Message.Litematica.usage)
             }
+        }
+    }
+
+    private fun handleWand(sender: CommandSender) {
+        if (sender !is Player) {
+            sender.sendMessage(I18n.Message.Command.playerOnly)
+            return
+        }
+        
+        val leftover = sender.inventory.addItem(SelectionWand.STACK)
+        if (leftover.isNotEmpty()) {
+            sender.sendMessage("\u00a7c[MonolithLib] 背包已满，物品已掉落")
+            sender.world.dropItemNaturally(sender.location, SelectionWand.STACK)
+        } else {
+            sender.sendMessage("\u00a7a[MonolithLib] 已给予选区魔杖")
+        }
+        sender.sendMessage("\u00a77左键方块设置 Pos1，右键方块设置 Pos2")
+    }
+    
+    private fun handleSave(sender: CommandSender, args: Array<out String>) {
+        if (sender !is Player) {
+            sender.sendMessage(I18n.Message.Command.playerOnly)
+            return
+        }
+        
+        if (args.size < 2) {
+            sender.sendMessage("\u00a7c[MonolithLib] 用法: /ml save <文件名> [--scaffold|--assembled]")
+            sender.sendMessage("\u00a77[MonolithLib] --scaffold  保存为脚手架阶段 (建造前)")
+            sender.sendMessage("\u00a77[MonolithLib] --assembled  保存为组装阶段 (建造后，默认)")
+            sender.sendMessage("\u00a77[MonolithLib] 不加标志: 保存为单阶段蓝图")
+            return
+        }
+        
+        val selection = SelectionManager.getSelection(sender)
+        if (!selection.isComplete) {
+            sender.sendMessage("\u00a7c[MonolithLib] 选区不完整！请先设置 Pos1 和 Pos2")
+            return
+        }
+        
+        val fileName = args[1]
+        if (!fileName.matches(Regex("^[a-zA-Z0-9_\\-]+$"))) {
+            sender.sendMessage("\u00a7c[MonolithLib] 文件名只能包含字母、数字、下划线和连字符")
+            return
+        }
+        
+        val flags = args.drop(2).map { it.lowercase() }
+        val isScaffold = flags.contains("--scaffold")
+        val isAssembled = flags.contains("--assembled")
+        val isStaged = isScaffold || isAssembled
+        
+        val world = Bukkit.getWorld(selection.worldName!!)
+        if (world == null) {
+            sender.sendMessage("\u00a7c[MonolithLib] 世界不存在: ${selection.worldName}")
+            return
+        }
+        
+        val minPos = selection.getMinPos()!!
+        val maxPos = selection.getMaxPos()!!
+        
+        val blocks = mutableListOf<top.mc506lw.monolith.core.model.BlockEntry>()
+        var rebarBlockCount = 0
+        
+        for (x in minPos.x..maxPos.x) {
+            for (y in minPos.y..maxPos.y) {
+                for (z in minPos.z..maxPos.z) {
+                    val block = world.getBlockAt(x, y, z)
+                    if (!block.type.isAir) {
+                        val position = top.mc506lw.monolith.core.math.Vector3i(x - minPos.x, y - minPos.y, z - minPos.z)
+                        val blockData = block.blockData.clone()
+                        
+                        val rebarPredicate = top.mc506lw.monolith.feature.rebar.RebarAdapter.createRebarPredicate(block)
+                        if (rebarPredicate != null) {
+                            rebarBlockCount++
+                        }
+                        
+                        blocks.add(top.mc506lw.monolith.core.model.BlockEntry(
+                            position = position,
+                            blockData = blockData,
+                            predicate = rebarPredicate
+                        ))
+                    }
+                }
+            }
+        }
+        
+        if (blocks.isEmpty()) {
+            sender.sendMessage("\u00a7c[MonolithLib] 选区内没有非空方块!")
+            return
+        }
+        
+        if (rebarBlockCount > 0) {
+            sender.sendMessage("\u00a77[MonolithLib] 检测到 $rebarBlockCount 个 Rebar 方块")
+        }
+        
+        val displayEntities = mutableListOf<top.mc506lw.monolith.core.model.DisplayEntityData>()
+        val centerLoc = org.bukkit.Location(world, minPos.x.toDouble(), minPos.y.toDouble(), minPos.z.toDouble())
+        val searchRadiusX = (maxPos.x - minPos.x + 10).toDouble()
+        val searchRadiusY = (maxPos.y - minPos.y + 10).toDouble()
+        val searchRadiusZ = (maxPos.z - minPos.z + 10).toDouble()
+        
+        for (entity in world.getNearbyEntities(centerLoc, searchRadiusX, searchRadiusY, searchRadiusZ)) {
+            if (entity !is org.bukkit.entity.Display) continue
+            
+            val relX = entity.location.blockX - minPos.x
+            val relY = entity.location.blockY - minPos.y
+            val relZ = entity.location.blockZ - minPos.z
+            
+            if (relX < 0 || relY < 0 || relZ < 0) continue
+            if (relX > maxPos.x - minPos.x + 5 || relY > maxPos.y - minPos.y + 5 || relZ > maxPos.z - minPos.z + 5) continue
+            
+            val transformation = entity.transformation
+            val displayData = top.mc506lw.monolith.core.model.DisplayEntityData(
+                position = top.mc506lw.monolith.core.math.Vector3i(relX, relY, relZ),
+                entityType = when (entity) {
+                    is org.bukkit.entity.BlockDisplay -> top.mc506lw.monolith.core.model.DisplayType.BLOCK
+                    is org.bukkit.entity.ItemDisplay -> top.mc506lw.monolith.core.model.DisplayType.ITEM
+                    else -> continue
+                },
+                rotation = org.joml.Quaternionf(transformation.leftRotation),
+                scale = transformation.scale,
+                translation = transformation.translation,
+                blockData = if (entity is org.bukkit.entity.BlockDisplay) entity.block else null,
+                itemStack = if (entity is org.bukkit.entity.ItemDisplay) entity.itemStack else null
+            )
+            displayEntities.add(displayData)
+        }
+        
+        val shape = top.mc506lw.monolith.core.model.Shape(blocks)
+        val importsDir = File(dataFolder, "imports")
+        importsDir.mkdirs()
+        
+        if (isStaged) {
+            val stageSuffix = if (isScaffold) ".scaffold" else ".assembled"
+            val stageName = if (isScaffold) "脚手架(建造前)" else "组装(建造后)"
+            
+            val blueprint = top.mc506lw.monolith.core.model.Blueprint.fromSingleShape(
+                id = fileName,
+                shape = shape,
+                meta = top.mc506lw.monolith.core.model.BlueprintMeta(
+                    displayName = fileName,
+                    description = "Raw recording by ${sender.name} [$stageName]",
+                    controllerOffset = top.mc506lw.monolith.core.math.Vector3i.ZERO
+                ),
+                displayEntities = displayEntities.takeIf { it.isNotEmpty() }
+            )
+            
+            val outputFile = File(importsDir, "$fileName$stageSuffix.raw.mnb")
+            try {
+                top.mc506lw.monolith.core.io.formats.BinaryFormat.save(blueprint, outputFile, 2, "")
+                sender.sendMessage("\u00a7a[MonolithLib] 已保存 $stageName 阶段: $fileName$stageSuffix.raw.mnb")
+                sender.sendMessage("\u00a77[MonolithLib] 方块数: ${blocks.size} | 显示实体: ${displayEntities.size}")
+                sender.sendMessage("\u00a77[MonolithLib] 尺寸: ${maxPos.x - minPos.x + 1}x${maxPos.y - minPos.y + 1}x${maxPos.z - minPos.z + 1}")
+                sender.sendMessage("\u00a77[MonolithLib] 文件位置: imports/$fileName$stageSuffix.raw.mnb")
+                
+                if (isScaffold) {
+                    val assembledFile = File(importsDir, "$fileName.assembled.raw.mnb")
+                    if (!assembledFile.exists()) {
+                        sender.sendMessage("\u00a7e[MonolithLib] 提示: 还需要保存组装阶段!")
+                        sender.sendMessage("\u00a7e[MonolithLib] 请搭建最终结构后执行: /ml save $fileName --assembled")
+                    } else {
+                        sender.sendMessage("\u00a7a[MonolithLib] 组装阶段已存在，可使用 /ml merge $fileName 合并")
+                    }
+                } else {
+                    val scaffoldFile = File(importsDir, "$fileName.scaffold.raw.mnb")
+                    if (!scaffoldFile.exists()) {
+                        sender.sendMessage("\u00a7e[MonolithLib] 提示: 还需要保存脚手架阶段!")
+                        sender.sendMessage("\u00a7e[MonolithLib] 请搭建建造前的结构后执行: /ml save $fileName --scaffold")
+                    } else {
+                        sender.sendMessage("\u00a7a[MonolithLib] 脚手架阶段已存在，可使用 /ml merge $fileName 合并")
+                    }
+                }
+            } catch (e: Exception) {
+                sender.sendMessage("\u00a7c[MonolithLib] 保存失败: ${e.message}")
+                logWarning("保存蓝图失败: ${e.message}")
+            }
+        } else {
+            val blueprint = top.mc506lw.monolith.core.model.Blueprint.fromSingleShape(
+                id = fileName,
+                shape = shape,
+                meta = top.mc506lw.monolith.core.model.BlueprintMeta(
+                    displayName = fileName,
+                    description = "Raw recording by ${sender.name}",
+                    controllerOffset = top.mc506lw.monolith.core.math.Vector3i.ZERO
+                ),
+                displayEntities = displayEntities.takeIf { it.isNotEmpty() }
+            )
+            
+            val outputFile = File(importsDir, "$fileName.raw.mnb")
+            try {
+                top.mc506lw.monolith.core.io.formats.BinaryFormat.save(blueprint, outputFile, 2, "")
+                sender.sendMessage("\u00a7a[MonolithLib] 已保存: $fileName.raw.mnb")
+                sender.sendMessage("\u00a77[MonolithLib] 方块数: ${blocks.size} | 显示实体: ${displayEntities.size}")
+                sender.sendMessage("\u00a77[MonolithLib] 尺寸: ${maxPos.x - minPos.x + 1}x${maxPos.y - minPos.y + 1}x${maxPos.z - minPos.z + 1}")
+                sender.sendMessage("\u00a77[MonolithLib] 文件位置: imports/$fileName.raw.mnb")
+                
+                SelectionManager.clearSelection(sender)
+            } catch (e: Exception) {
+                sender.sendMessage("\u00a7c[MonolithLib] 保存失败: ${e.message}")
+                logWarning("保存蓝图失败: ${e.message}")
+            }
+        }
+    }
+
+    private fun handleMerge(sender: CommandSender, args: Array<out String>) {
+        if (args.size < 2) {
+            sender.sendMessage("\u00a7c[MonolithLib] 用法: /ml merge <文件名>")
+            sender.sendMessage("\u00a77[MonolithLib] 合并分阶段录制的脚手架和组装蓝图")
+            return
+        }
+        
+        val fileName = args[1]
+        val importsDir = File(dataFolder, "imports")
+        
+        val scaffoldFile = File(importsDir, "$fileName.scaffold.raw.mnb")
+        val assembledFile = File(importsDir, "$fileName.assembled.raw.mnb")
+        
+        if (!scaffoldFile.exists()) {
+            sender.sendMessage("\u00a7c[MonolithLib] 脚手架阶段文件不存在: $fileName.scaffold.raw.mnb")
+            sender.sendMessage("\u00a7e[MonolithLib] 请先使用 /ml save $fileName --scaffold 保存脚手架阶段")
+            return
+        }
+        
+        if (!assembledFile.exists()) {
+            sender.sendMessage("\u00a7c[MonolithLib] 组装阶段文件不存在: $fileName.assembled.raw.mnb")
+            sender.sendMessage("\u00a7e[MonolithLib] 请先使用 /ml save $fileName --assembled 保存组装阶段")
+            return
+        }
+        
+        val scaffoldBlueprint = top.mc506lw.monolith.core.io.formats.BinaryFormat.load(scaffoldFile)
+        if (scaffoldBlueprint == null) {
+            sender.sendMessage("\u00a7c[MonolithLib] 无法加载脚手架阶段文件")
+            return
+        }
+        
+        val assembledBlueprint = top.mc506lw.monolith.core.io.formats.BinaryFormat.load(assembledFile)
+        if (assembledBlueprint == null) {
+            sender.sendMessage("\u00a7c[MonolithLib] 无法加载组装阶段文件")
+            return
+        }
+        
+        val scaffoldShape = scaffoldBlueprint.assembledShape
+        val assembledShape = assembledBlueprint.assembledShape
+        val displayEntities = assembledBlueprint.displayEntities
+        
+        val mergedBlueprint = top.mc506lw.monolith.core.model.Blueprint(
+            id = fileName,
+            stages = mapOf(
+                top.mc506lw.monolith.core.model.BuildStage.SCAFFOLD to scaffoldShape,
+                top.mc506lw.monolith.core.model.BuildStage.ASSEMBLED to assembledShape
+            ),
+            meta = assembledBlueprint.meta.copy(
+                description = "Merged dual-stage blueprint by ${sender.name}"
+            ),
+            displayEntities = displayEntities,
+            slots = assembledBlueprint.slots,
+            customData = assembledBlueprint.customData,
+            controllerRebarKey = assembledBlueprint.controllerRebarKey
+        )
+        
+        val outputFile = File(importsDir, "$fileName.raw.mnb")
+        try {
+            top.mc506lw.monolith.core.io.formats.BinaryFormat.save(mergedBlueprint, outputFile, 2, "")
+            sender.sendMessage("\u00a7a[MonolithLib] 已合并双阶段蓝图: $fileName.raw.mnb")
+            sender.sendMessage("\u00a77[MonolithLib] 脚手架方块: ${scaffoldShape.blocks.size} | 组装方块: ${assembledShape.blocks.size}")
+            sender.sendMessage("\u00a77[MonolithLib] 显示实体: ${displayEntities.size}")
+            sender.sendMessage("\u00a77[MonolithLib] 文件位置: imports/$fileName.raw.mnb")
+        } catch (e: Exception) {
+            sender.sendMessage("\u00a7c[MonolithLib] 合并失败: ${e.message}")
+            logWarning("合并蓝图失败: ${e.message}")
         }
     }
 

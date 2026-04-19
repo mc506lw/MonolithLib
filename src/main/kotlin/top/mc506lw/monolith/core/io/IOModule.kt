@@ -77,7 +77,7 @@ class IOModule(private val dataFolder: File, private val logger: Logger = Bukkit
         val config = if (configFile.exists()) BlueprintConfigLoader.load(configFile) else null
         
         val finalBlueprint = if (config != null) {
-            ProductBuilder.build(baseBlueprint, config)
+            BuiltMNBCompiler.compile(baseBlueprint, config)
         } else {
             baseBlueprint
         }

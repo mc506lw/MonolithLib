@@ -9,6 +9,7 @@ import top.mc506lw.monolith.validation.predicate.Predicate
 import top.mc506lw.monolith.validation.predicate.Predicates
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.model.BlueprintMeta
+import top.mc506lw.monolith.core.model.BuildStage
 import top.mc506lw.monolith.core.model.Shape
 import top.mc506lw.monolith.core.model.BlockEntry as ModelBlockEntry
 
@@ -122,14 +123,12 @@ class BlueprintDSL(private val id: String) {
         val meta = BlueprintMeta(
             displayName = metaName,
             description = metaDescription,
-            author = metaAuthor,
-            version = metaVersion,
             controllerOffset = centerOffset
         )
         
         return Blueprint(
             id = id,
-            shape = shape,
+            stages = mapOf(BuildStage.SCAFFOLD to shape, BuildStage.ASSEMBLED to shape),
             meta = meta
         )
     }
@@ -141,6 +140,6 @@ fun buildBlueprint(id: String, init: BlueprintDSL.() -> Unit): Blueprint {
 
 fun org.bukkit.plugin.java.JavaPlugin.registerMonolithStructure(id: String, init: BlueprintDSL.() -> Unit): Blueprint {
     val blueprint = buildBlueprint(id, init)
-    top.mc506lw.monolith.api.MonolithAPI.getInstance().registry.registerBlueprint(blueprint)
+    top.mc506lw.monolith.api.MonolithAPI.getInstance().registry.register(blueprint)
     return blueprint
 }
