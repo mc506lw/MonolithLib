@@ -201,7 +201,7 @@ object PrinterManager {
             }
         }
         
-        site.triggerAssembled()
+        site.enterAwaitingCore()
         
         val rebarKey = site.coreRebarKey
         if (rebarKey != null) {

@@ -1,6 +1,5 @@
 package top.mc506lw.monolith.feature.buildsite
 
-import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import org.bukkit.Color
 import org.bukkit.Location
@@ -12,7 +11,6 @@ import org.bukkit.entity.Display
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
-import org.bukkit.inventory.meta.ItemMeta
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.util.Transformation
 import org.joml.AxisAngle4f
@@ -27,7 +25,6 @@ import top.mc506lw.monolith.validation.AutoFixer
 import top.mc506lw.monolith.validation.BlockFixEntry
 import top.mc506lw.monolith.validation.DetailedValidationResult
 import top.mc506lw.monolith.validation.ValidationEngine
-import top.mc506lw.monolith.validation.predicate.MaterialPredicate
 import top.mc506lw.monolith.validation.predicate.Predicate
 import top.mc506lw.monolith.validation.predicate.Predicates
 import top.mc506lw.monolith.validation.predicate.RotatedPredicate
@@ -35,9 +32,9 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 enum class BuildSiteState {
-    BUILDING_LAYERS,
+    BUILDING,
     AWAITING_CORE,
-    COMPLETED
+    VIRTUAL
 }
 
 object BlueprintItem {
@@ -49,10 +46,10 @@ object BlueprintItem {
         val item = ItemStack(Material.PAPER)
         val meta = item.itemMeta ?: return item
 
-        meta.displayName(Component.text("\u00a7b蓝图: \u00a7f$blueprintId"))
+        meta.displayName(net.kyori.adventure.text.Component.text("\u00a7b蓝图: \u00a7f$blueprintId"))
         meta.lore(listOf(
-            Component.text("\u00a77右键放置以创建工地"),
-            Component.text("\u00a77蓝图ID: \u00a7e$blueprintId")
+            net.kyori.adventure.text.Component.text("\u00a77右键放置以创建工地"),
+            net.kyori.adventure.text.Component.text("\u00a77蓝图ID: \u00a7e$blueprintId")
         ))
 
         meta.persistentDataContainer.set(BLUEPRINT_KEY, PersistentDataType.STRING, blueprintId)
@@ -109,7 +106,7 @@ class BuildSite(
     var currentLayer: Int = initialLayer
         private set
 
-    var state: BuildSiteState = BuildSiteState.BUILDING_LAYERS
+    var state: BuildSiteState = BuildSiteState.BUILDING
         private set
 
     var placedBlocks: MutableSet<Vector3i> = ConcurrentHashMap.newKeySet<Vector3i>()
@@ -133,11 +130,12 @@ class BuildSite(
     var isCompleted: Boolean = false
         private set
 
-    private val displayEntities = ConcurrentHashMap<Vector3i, BlockDisplay>()
+    private val ghostDisplayEntities = ConcurrentHashMap<Vector3i, BlockDisplay>()
     private val playerRenderCache = ConcurrentHashMap<UUID, Set<Vector3i>>()
     private var coreGlassPlaced: Boolean = false
-    private var coreControllerDisplay: BlockDisplay? = null
     private var coreItemDisplay: ItemDisplay? = null
+
+    val backupData: MutableMap<Vector3i, BlockData> = ConcurrentHashMap()
 
     private val validationEngine: ValidationEngine by lazy {
         ValidationEngine(blueprint, transform)
@@ -235,7 +233,7 @@ class BuildSite(
 
     fun renderForPlayer(player: Player) {
         if (isCompleted) return
-        if (state == BuildSiteState.COMPLETED) return
+        if (state == BuildSiteState.VIRTUAL) return
 
         val world = anchorLocation.world
         if (world == null || player.world != world) return
@@ -298,7 +296,7 @@ class BuildSite(
             else -> Color.RED
         }
 
-        val existing = displayEntities[ghost.worldPos]
+        val existing = ghostDisplayEntities[ghost.worldPos]
         if (existing != null && existing.isValid) {
             existing.glowColorOverride = glowColor
             return
@@ -327,20 +325,20 @@ class BuildSite(
                     AxisAngle4f()
                 )
             }
-            displayEntities[ghost.worldPos] = display
+            ghostDisplayEntities[ghost.worldPos] = display
         } catch (_: Exception) {}
     }
 
     private fun cleanupStaleEntities(visiblePositions: Set<Vector3i>) {
-        val toRemove = displayEntities.keys.filter { it !in visiblePositions }
+        val toRemove = ghostDisplayEntities.keys.filter { it !in visiblePositions }
         for (pos in toRemove) {
-            displayEntities[pos]?.remove()
-            displayEntities.remove(pos)
+            ghostDisplayEntities[pos]?.remove()
+            ghostDisplayEntities.remove(pos)
         }
     }
 
     fun checkLayerCompletion(): Boolean {
-        if (state == BuildSiteState.AWAITING_CORE || isCompleted) return false
+        if (state == BuildSiteState.AWAITING_CORE || state == BuildSiteState.VIRTUAL || isCompleted) return false
 
         val currentLayerY = getCurrentLayerY() ?: return false
         val layerBlocks = getCurrentLayerBlocks()
@@ -363,15 +361,6 @@ class BuildSite(
         return true
     }
 
-    fun advanceToNextLayer(): Boolean {
-        if (currentLayer < totalLayers - 1) {
-            currentLayer++
-            clearCurrentLayerRenderings()
-            return true
-        }
-        return false
-    }
-
     fun advanceToNextIncompleteLayer(): Int {
         if (isLastLayer()) return 0
 
@@ -382,28 +371,17 @@ class BuildSite(
             advancedCount++
             clearCurrentLayerRenderings()
 
-            val layerInfo = "推进到第${currentLayer}层 (共推进${advancedCount}层)"
-            Bukkit.getLogger().info("[BuildSite] advanceToNextIncompleteLayer: $layerInfo")
-
             if (!isLayerFullyPlaced(currentLayer)) {
-                Bukkit.getLogger().info("[BuildSite] advanceToNextIncompleteLayer: 第${currentLayer}层未完成，停止")
                 break
             }
-
-            Bukkit.getLogger().info("[BuildSite] advanceToNextIncompleteLayer: 第${currentLayer}层已完成，继续检查下一层")
-        }
-
-        if (isLastLayer() && isLayerFullyPlaced(currentLayer)) {
-            val lastLayerInfo = "已到达最后层(${currentLayer})且该层已完成!"
-            Bukkit.getLogger().info("[BuildSite] advanceToNextIncompleteLayer: $lastLayerInfo")
         }
 
         return advancedCount
     }
 
-    private fun isLastLayer(): Boolean = currentLayer >= totalLayers - 1
+    fun isLastLayer(): Boolean = currentLayer >= totalLayers - 1
 
-    private fun isLayerFullyPlaced(layerIndex: Int): Boolean {
+    fun isLayerFullyPlaced(layerIndex: Int): Boolean {
         val layerY = layerYLevels.getOrNull(layerIndex) ?: return true
 
         val layerBlocks = allGhostBlocks.filter { it.worldPos.y == layerY && !it.isCore }
@@ -424,121 +402,152 @@ class BuildSite(
         return true
     }
 
-    fun triggerAssembled(): Boolean {
-        if (state != BuildSiteState.AWAITING_CORE) return false
-
-        val world = anchorLocation.world ?: return false
-
-        Bukkit.getLogger().info("[BuildSite] triggerAssembled: 开始成型流程")
-
-        val coreBlock = world.getBlockAt(coreWorldPos.x, coreWorldPos.y, coreWorldPos.z)
-        val coreBlockType = coreBlock.type
-        val coreBlockData = coreBlock.blockData.clone()
-
-        AutoFixer.fixAssembledState(blueprint.assembledShape, anchorLocation, facing, blueprint.meta.controllerOffset)
-
-        Bukkit.getLogger().info("[BuildSite] triggerAssembled: 已应用 assembledShape")
-
-        if (blueprint.displayEntities.isNotEmpty()) {
-            top.mc506lw.monolith.feature.display.DisplayEntityManager.spawnDisplayEntities(
-                siteId = id,
-                displayEntities = blueprint.displayEntities,
-                anchorLocation = anchorLocation,
-                facing = facing,
-                centerOffset = blueprint.meta.controllerOffset
-            )
+    fun checkIfAllNonCoreLayersComplete(): Boolean {
+        for (i in layerYLevels.indices) {
+            if (!isLayerFullyPlaced(i)) return false
         }
-
-        state = BuildSiteState.COMPLETED
-        removeAllRenderings()
-        removeCoreGlass()
-
         return true
     }
 
-    fun revertToBuilding() {
-        if (state != BuildSiteState.COMPLETED) {
-            Bukkit.getLogger().warning("[BuildSite] revertToBuilding(): 状态不是COMPLETED, 当前状态=$state, 跳过")
-            return
+    fun findFirstIncompleteLayer(): Int {
+        for (i in layerYLevels.indices) {
+            if (!isLayerFullyPlaced(i)) return i
         }
+        return -1
+    }
 
-        Bukkit.getLogger().info("[BuildSite] revertToBuilding(): 开始恢复到建筑阶段")
-        Bukkit.getLogger().info("[BuildSite] revertToBuilding(): siteId=$id, blueprintId=$blueprintId")
+    fun enterAwaitingCore() {
+        if (state == BuildSiteState.AWAITING_CORE) return
+
+        state = BuildSiteState.AWAITING_CORE
+        clearCurrentLayerRenderings()
+        removeCoreGlass()
+
+        val world = anchorLocation.world
+        if (world != null) {
+            spawnCoreItemDisplay(world)
+        }
+    }
+
+    fun forceEnterAwaitingCore() {
+        if (state == BuildSiteState.AWAITING_CORE) return
+
+        val lastLayerIndex = (totalLayers - 1).coerceAtLeast(0)
+        currentLayer = lastLayerIndex
+
+        clearCurrentLayerRenderings()
+        removeCoreGlass()
+
+        state = BuildSiteState.AWAITING_CORE
+
+        spawnCoreItemDisplay(anchorLocation.world)
+    }
+
+    fun advanceToLayer(targetLayer: Int) {
+        if (targetLayer < 0 || targetLayer >= totalLayers) return
+        if (targetLayer <= currentLayer) return
+
+        currentLayer = targetLayer
+        clearCurrentLayerRenderings()
+    }
+
+    fun transitionToVirtual() {
+        if (state == BuildSiteState.VIRTUAL) return
 
         val world = anchorLocation.world ?: return
 
-        top.mc506lw.monolith.feature.display.DisplayEntityManager.removeAllForSite(id)
-        Bukkit.getLogger().info("[BuildSite] revertToBuilding(): 已移除展示实体")
+        Bukkit.getLogger().info("[BuildSite] transitionToVirtual: 开始, siteId=$id, blueprintId=$blueprintId")
+        Bukkit.getLogger().info("[BuildSite] transitionToVirtual: assembledShape.blocks.size=${blueprint.assembledShape.blocks.size}, allGhostBlocks.size=${allGhostBlocks.size}")
 
-        val scaffoldShape = blueprint.scaffoldShape
-        val transform = CoordinateTransform(facing)
-        val anchorPos = Vector3i(
-            anchorLocation.blockX,
-            anchorLocation.blockY,
-            anchorLocation.blockZ
-        )
-        val controllerOffset = blueprint.meta.controllerOffset
-
-        var restoredCount = 0
-        var errorCount = 0
-
-        for (blockEntry in scaffoldShape.blocks) {
-            val worldPos = transform.toWorldPosition(
-                controllerPos = anchorPos,
-                relativePos = blockEntry.position,
-                centerOffset = controllerOffset
-            )
-
-            if (!world.isChunkLoaded(worldPos.x shr 4, worldPos.z shr 4)) continue
-
-            try {
-                val block = world.getBlockAt(worldPos.x, worldPos.y, worldPos.z)
-
-                if (io.github.pylonmc.rebar.block.BlockStorage.isRebarBlock(block)) {
-                    Bukkit.getLogger().info("[BuildSite] revertToBuilding(): 跳过Rebar方块 $worldPos (${block.type})")
-                    continue
-                }
-
-                block.blockData = blockEntry.blockData.clone()
-                restoredCount++
-            } catch (e: Exception) {
-                Bukkit.getLogger().warning("[BuildSite] revertToBuilding(): 恢复方块失败 $worldPos: ${e.message}")
-                errorCount++
-            }
+        backupData.clear()
+        for (ghost in allGhostBlocks) {
+            val block = world.getBlockAt(ghost.worldPos.x, ghost.worldPos.y, ghost.worldPos.z)
+            backupData[ghost.worldPos] = block.blockData.clone()
         }
 
-        placedBlocks.clear()
-        currentLayer = 0
-        isCompleted = false
-        state = BuildSiteState.BUILDING_LAYERS
+        for (ghost in allGhostBlocks) {
+            val block = world.getBlockAt(ghost.worldPos.x, ghost.worldPos.y, ghost.worldPos.z)
+            block.type = Material.STRUCTURE_VOID
+        }
 
-        Bukkit.getLogger().info("[BuildSite] revertToBuilding(): 完成! 恢复了" + restoredCount + "个方块, " + errorCount + "个错误")
+        removeCoreItemDisplay()
+        clearCurrentLayerRenderings()
+        removeCoreGlass()
+
+        val assembledShape = blueprint.assembledShape
+        val isAssembledValid = assembledShape.blocks.isNotEmpty() &&
+            assembledShape.blocks.any { it.blockData.material != Material.STRUCTURE_VOID }
+
+        val displayShape = if (isAssembledValid) {
+            Bukkit.getLogger().info("[BuildSite] transitionToVirtual: 使用assembledShape数据")
+            assembledShape
+        } else {
+            Bukkit.getLogger().info("[BuildSite] transitionToVirtual: ⚠️ assembledShape无效(全STRUCTURE_VOID), 使用backupData构建展示Shape")
+            buildDisplayShapeFromBackup()
+        }
+
+        val spawnedCount = top.mc506lw.monolith.feature.display.DisplayEntityManager.spawnVirtualView(
+            siteId = id,
+            assembledShape = displayShape,
+            anchorLocation = anchorLocation,
+            facing = facing,
+            controllerOffset = blueprint.meta.controllerOffset
+        )
+
+        Bukkit.getLogger().info("[BuildSite] transitionToVirtual: 展示实体生成数量=$spawnedCount")
+
+        state = BuildSiteState.VIRTUAL
     }
 
-    fun disassembleToBuilding() {
-        if (state != BuildSiteState.COMPLETED) {
-            Bukkit.getLogger().warning("[BuildSite] disassembleToBuilding(): 状态不是COMPLETED, 当前状态=$state, 跳过")
-            return
+    private fun buildDisplayShapeFromBackup(): Shape {
+        val entries = mutableListOf<top.mc506lw.monolith.core.model.BlockEntry>()
+
+        for ((worldPos, blockData) in backupData) {
+            if (blockData.material == Material.STRUCTURE_VOID ||
+                blockData.material == Material.AIR ||
+                blockData.material == Material.RED_STAINED_GLASS) continue
+
+            val relativePos = transform.toRelativePosition(
+                worldPos = worldPos,
+                controllerPos = Vector3i(anchorLocation.blockX, anchorLocation.blockY, anchorLocation.blockZ),
+                centerOffset = blueprint.meta.controllerOffset
+            )
+            entries.add(top.mc506lw.monolith.core.model.BlockEntry(relativePos, blockData))
         }
 
-        Bukkit.getLogger().info("[BuildSite] disassembleToBuilding(): 重置工地状态 siteId=$id")
+        return Shape(entries)
+    }
+
+    fun disassembleFromVirtual(): Boolean {
+        if (state != BuildSiteState.VIRTUAL) return false
+
+        val world = anchorLocation.world ?: return false
 
         top.mc506lw.monolith.feature.display.DisplayEntityManager.removeAllForSite(id)
 
-        placedBlocks.clear()
-        currentLayer = 0
-        isCompleted = false
-        state = BuildSiteState.BUILDING_LAYERS
+        for ((pos, originalData) in backupData) {
+            if (!world.isChunkLoaded(pos.x shr 4, pos.z shr 4)) continue
+            val block = world.getBlockAt(pos.x, pos.y, pos.z)
+            if (io.github.pylonmc.rebar.block.BlockStorage.isRebarBlock(block)) continue
+            block.blockData = originalData.clone()
+        }
 
-        Bukkit.getLogger().info("[BuildSite] disassembleToBuilding(): 完成! 已重置为BUILDING_LAYERS状态")
+        backupData.clear()
+
+        state = BuildSiteState.AWAITING_CORE
+
+        val lastLayerIndex = (totalLayers - 1).coerceAtLeast(0)
+        currentLayer = lastLayerIndex
+
+        spawnCoreItemDisplay(world)
+
+        return true
     }
 
     private fun spawnCoreItemDisplay(world: org.bukkit.World) {
         if (coreItemDisplay != null && coreItemDisplay!!.isValid) return
 
         coreItemDisplay?.remove()
-
-        Bukkit.getLogger().info("[BuildSite] spawnCoreItemDisplay: anchorLocation=$anchorLocation, coreWorldPos=$coreWorldPos, centerOffset=${blueprint.meta.controllerOffset}, facing=$facing")
 
         val location = Location(world,
             coreWorldPos.x.toDouble() + 0.5,
@@ -547,20 +556,24 @@ class BuildSite(
 
         try {
             val display = world.spawn(location, ItemDisplay::class.java) { d ->
-                val coreGhost = getCoreBlock()
-                val coreItem = if (coreGhost != null && coreRebarKey != null) {
-                    ItemStack(coreGhost.previewBlockData.material)
-                } else if (coreRebarKey != null) {
-                    ItemStack(Material.FURNACE)
-                } else {
-                    ItemStack(Material.STRUCTURE_BLOCK)
+                val coreItem = when {
+                    coreRebarKey != null -> {
+                        try {
+                            io.github.pylonmc.rebar.item.builder.ItemStackBuilder
+                                .rebar(Material.LODESTONE, coreRebarKey)
+                                .build()
+                        } catch (e: Exception) {
+                            ItemStack(Material.LODESTONE)
+                        }
+                    }
+                    else -> ItemStack(Material.STRUCTURE_BLOCK)
                 }
                 d.setItemStack(coreItem)
                 d.isGlowing = true
                 d.glowColorOverride = Color.fromRGB(255, 215, 0)
                 d.isPersistent = false
                 d.brightness = Display.Brightness(15, 15)
-                
+
                 val rotationRad = Math.toRadians((facing.rotationSteps * 90).toDouble()).toFloat()
                 d.transformation = Transformation(
                     Vector3f(0f, -0.25f, 0f),
@@ -569,7 +582,6 @@ class BuildSite(
                     AxisAngle4f()
                 )
             }
-            Bukkit.getLogger().info("[BuildSite] spawnCoreItemDisplay: 已生成 at ${display.location}")
             coreItemDisplay = display
         } catch (_: Exception) {}
     }
@@ -583,158 +595,88 @@ class BuildSite(
         spawnCoreItemDisplay(world)
     }
 
-    fun canPlaceCore(pos: Vector3i): Boolean {
-        return state == BuildSiteState.AWAITING_CORE && pos == coreWorldPos
-    }
-
-    fun enterAwaitingCore() {
-        Bukkit.getLogger().info("[BuildSite] enterAwaitingCore: siteId=$id, 之前状态=$state")
-        state = BuildSiteState.AWAITING_CORE
-        clearCurrentLayerRenderings()
-        val world = anchorLocation.world
-        if (world != null) {
-            removeCoreGlass()
-            spawnCoreItemDisplay(world)
-        }
-        Bukkit.getLogger().info("[BuildSite] enterAwaitingCore: 完成, 新状态=$state")
-    }
-
     fun isCorePosition(pos: Vector3i): Boolean = pos == coreWorldPos
+
+    fun isNearCorePosition(pos: Vector3i): Boolean {
+        val dx = kotlin.math.abs(pos.x - coreWorldPos.x)
+        val dy = kotlin.math.abs(pos.y - coreWorldPos.y)
+        val dz = kotlin.math.abs(pos.z - coreWorldPos.z)
+        return (dx + dy + dz) <= 1 && pos != coreWorldPos
+    }
 
     fun isCoreGlassPosition(pos: Vector3i): Boolean = pos == coreWorldPos && coreGlassPlaced
 
     fun containsPosition(pos: Vector3i): Boolean = allGhostBlocks.any { it.worldPos == pos }
 
-    fun isAssembledPosition(pos: Vector3i): Boolean {
-        if (pos.x < boundingMinX || pos.x > boundingMaxX ||
-            pos.y < boundingMinY || pos.y > boundingMaxY ||
-            pos.z < boundingMinZ || pos.z > boundingMaxZ) return false
-
-        val transform = CoordinateTransform(facing)
-        val centerOffset = blueprint.meta.controllerOffset
-        val controllerPos = Vector3i(anchorLocation.blockX, anchorLocation.blockY, anchorLocation.blockZ)
-
-        for (blockEntry in blueprint.assembledShape.blocks) {
-            val worldPos = transform.toWorldPosition(
-                controllerPos = controllerPos,
-                relativePos = blockEntry.position,
-                centerOffset = centerOffset
-            )
-            if (worldPos == pos) return true
-        }
-
-        for (blockEntry in blueprint.scaffoldShape.blocks) {
-            val worldPos = transform.toWorldPosition(
-                controllerPos = controllerPos,
-                relativePos = blockEntry.position,
-                centerOffset = centerOffset
-            )
-            if (worldPos == pos) return true
-        }
-
-        return false
+    fun isVirtualPosition(pos: Vector3i): Boolean {
+        if (state != BuildSiteState.VIRTUAL) return false
+        return allGhostBlocks.any { it.worldPos == pos }
     }
 
     fun getGhostAt(pos: Vector3i): SiteGhostBlock? = allGhostBlocks.find { it.worldPos == pos }
 
-    fun getScaffoldBlockDataAt(worldPos: Vector3i): BlockData? {
-        val transform = CoordinateTransform(facing)
-        val anchorPos = Vector3i(
-            anchorLocation.blockX,
-            anchorLocation.blockY,
-            anchorLocation.blockZ
-        )
-        val controllerOffset = blueprint.meta.controllerOffset
-        for (blockEntry in blueprint.scaffoldShape.blocks) {
-            val pos = transform.toWorldPosition(
-                controllerPos = anchorPos,
-                relativePos = blockEntry.position,
-                centerOffset = controllerOffset
-            )
-            if (pos == worldPos) return blockEntry.blockData
-        }
-        for (blockEntry in blueprint.assembledShape.blocks) {
-            val pos = transform.toWorldPosition(
-                controllerPos = anchorPos,
-                relativePos = blockEntry.position,
-                centerOffset = controllerOffset
-            )
-            if (pos == worldPos) return blockEntry.blockData
-        }
-        return null
-    }
-
     fun recordPlacement(worldPos: Vector3i) {
-        if (!placedBlocks.contains(worldPos)) {
-            placedBlocks.add(worldPos)
-            Bukkit.getLogger().info("[Placement] + 记录放置: $worldPos (总计=${placedBlocks.size})")
-        } else {
-            Bukkit.getLogger().info("[Placement] = 重复记录: $worldPos (已存在)")
-        }
+        placedBlocks.add(worldPos)
     }
 
     fun hasPlacedBlock(worldPos: Vector3i): Boolean {
-        val inSet = placedBlocks.contains(worldPos)
-
-        if (inSet) {
-            val world = anchorLocation.world
-            if (world != null) {
-                val block = world.getBlockAt(worldPos.x, worldPos.y, worldPos.z)
-                if (block.type.isAir || !containsPosition(worldPos)) {
-                    val warnMsg = "不同步: placedBlocks包含$worldPos 但世界方块是${block.type}, 自动移除"
-                    Bukkit.getLogger().warning("[Placement] ⚠️ $warnMsg")
-                    placedBlocks.remove(worldPos)
-                    return false
-                }
-            }
-        }
-
-        return inSet
+        return placedBlocks.contains(worldPos)
     }
 
     fun removePlacement(worldPos: Vector3i) {
-        val removed = placedBlocks.remove(worldPos)
-        Bukkit.getLogger().info("[Placement] - 移除放置: $worldPos (成功=$removed, 剩余=${placedBlocks.size})")
+        placedBlocks.remove(worldPos)
     }
 
-    fun getPlacedBlockType(worldPos: Vector3i): org.bukkit.Material? {
-        val world = anchorLocation.world ?: return null
-        val block = world.getBlockAt(worldPos.x, worldPos.y, worldPos.z)
-
-        return if (!block.type.isAir && !io.github.pylonmc.rebar.block.BlockStorage.isRebarBlock(block)) {
-            block.type
-        } else {
-            null
-        }
-    }
-
-    fun revertFromWaitingForCore(): Int {
+    fun revertToBuilding(): Int {
         if (state != BuildSiteState.AWAITING_CORE) return -1
-
-        Bukkit.getLogger().info("[BuildSite] revertFromWaitingForCore: 开始回退, siteId=$id, 当前currentLayer=$currentLayer")
 
         removeCoreItemDisplay()
 
-        state = BuildSiteState.BUILDING_LAYERS
+        state = BuildSiteState.BUILDING
+
+        val world = anchorLocation.world
+        if (world != null) {
+            val coreBlock = world.getBlockAt(coreWorldPos.x, coreWorldPos.y, coreWorldPos.z)
+            if (coreBlock.type != Material.RED_STAINED_GLASS && coreBlock.type != Material.AIR) {
+                val isRebar = io.github.pylonmc.rebar.block.BlockStorage.isRebarBlock(coreBlock)
+                if (isRebar) {
+                    try {
+                        val rebarBlock = io.github.pylonmc.rebar.block.BlockStorage.get(coreBlock)
+                        if (rebarBlock != null) {
+                            val rebarItem = io.github.pylonmc.rebar.item.builder.ItemStackBuilder
+                                .rebar(coreBlock.type, (rebarBlock as io.github.pylonmc.rebar.block.RebarBlock).schema.key)
+                                .build()
+                            coreBlock.world.dropItemNaturally(coreBlock.location, rebarItem)
+                        }
+                    } catch (e: Exception) {
+                        val fallbackItem = ItemStack(coreBlock.type)
+                        coreBlock.world.dropItemNaturally(coreBlock.location, fallbackItem)
+                    }
+                } else {
+                    val dropItem = ItemStack(coreBlock.type)
+                    coreBlock.world.dropItemNaturally(coreBlock.location, dropItem)
+                }
+                coreBlock.type = Material.AIR
+            }
+        }
+
+        if (world != null) {
+            placeCoreGlassIfAbsent(world)
+        }
 
         var targetLayer = -1
-
         for (i in layerYLevels.indices) {
             if (!isLayerFullyPlaced(i)) {
                 targetLayer = i
-                Bukkit.getLogger().info("[BuildSite] revertFromWaitingForCore: 找到未完成层 $i (Y=${layerYLevels[i]})")
                 break
             }
         }
 
         if (targetLayer == -1) {
             targetLayer = 0
-            Bukkit.getLogger().info("[BuildSite] revertFromWaitingForCore: 所有层都已完成，回退到第0层")
         }
 
         currentLayer = targetLayer
-
-        Bukkit.getLogger().info("[BuildSite] revertFromWaitingForCore: 完成! 新的currentLayer=$currentLayer")
 
         return targetLayer
     }
@@ -755,11 +697,9 @@ class BuildSite(
     }
 
     fun removeAllRenderings() {
-        displayEntities.values.forEach { it.remove() }
-        displayEntities.clear()
+        ghostDisplayEntities.values.forEach { it.remove() }
+        ghostDisplayEntities.clear()
         playerRenderCache.clear()
-        coreControllerDisplay?.remove()
-        coreControllerDisplay = null
     }
 
     fun removeCoreGlass() {
@@ -792,7 +732,7 @@ class BuildSite(
 
         for (ghostBlock in allGhostBlocks) {
             val blockLocation = Location(world, ghostBlock.worldPos.x.toDouble(), ghostBlock.worldPos.y.toDouble(), ghostBlock.worldPos.z.toDouble())
-            
+
             if (!blockLocation.chunk.isLoaded) {
                 missingBlocks.add(ghostBlock.worldPos)
                 continue
@@ -813,16 +753,12 @@ class BuildSite(
                     ))
                 }
             } else {
-                Bukkit.getLogger().info("[BuildSite.validateDetailed] 不匹配: relPos=${ghostBlock.relativePos}, worldPos=${ghostBlock.worldPos}, " +
-                    "期望=${ghostBlock.previewBlockData.asString}, 实际=${actualBlockData.asString}, isCore=${ghostBlock.isCore}, predicateType=${ghostBlock.predicate::class.simpleName}")
                 missingBlocks.add(ghostBlock.worldPos)
             }
         }
 
         val totalCount = allGhostBlocks.size
         val completionRate = if (totalCount > 0) matchedCount.toDouble() / totalCount else 0.0
-        
-        Bukkit.getLogger().info("[BuildSite.validateDetailed] 结果: matched=$matchedCount, total=$totalCount, missing=${missingBlocks.size}, toFix=${blocksToFix.size}")
 
         return DetailedValidationResult(
             isComplete = matchedCount == totalCount,
@@ -835,8 +771,8 @@ class BuildSite(
     }
 
     private fun clearCurrentLayerRenderings() {
-        displayEntities.values.forEach { it.remove() }
-        displayEntities.clear()
+        ghostDisplayEntities.values.forEach { it.remove() }
+        ghostDisplayEntities.clear()
         playerRenderCache.clear()
     }
 

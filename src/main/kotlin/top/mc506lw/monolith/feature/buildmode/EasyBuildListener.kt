@@ -20,7 +20,6 @@ import top.mc506lw.monolith.feature.buildsite.BuildSite
 import top.mc506lw.monolith.feature.buildsite.BuildSiteManager
 import top.mc506lw.monolith.feature.buildsite.BuildSiteState
 import top.mc506lw.monolith.feature.buildsite.EasyBuildManager
-import top.mc506lw.monolith.feature.buildsite.GhostBlockEntry
 import top.mc506lw.rebar.MonolithLib
 
 class EasyBuildListener : Listener {
@@ -41,7 +40,7 @@ class EasyBuildListener : Listener {
         val entry = EasyBuildManager.findGhostEntryAt(targetPos.x, targetPos.y, targetPos.z) ?: return
         val (site, ghost) = entry
 
-        if (site.state != BuildSiteState.BUILDING_LAYERS) return
+        if (site.state != BuildSiteState.BUILDING) return
         if (site.isCompleted) return
         if (!BuildSiteManager.isActiveSite(site.id)) return
 

@@ -2,148 +2,103 @@ package top.mc506lw.monolith.feature.display
 
 import org.bukkit.Bukkit
 import org.bukkit.Location
+import org.bukkit.block.data.BlockData
 import org.bukkit.entity.BlockDisplay
-import org.bukkit.entity.ItemDisplay
+import org.bukkit.entity.Display
 import org.bukkit.util.Transformation
 import top.mc506lw.monolith.core.math.Vector3i
-import top.mc506lw.monolith.core.model.DisplayEntityData
-import top.mc506lw.monolith.core.model.DisplayType
+import top.mc506lw.monolith.core.model.Shape
+import top.mc506lw.monolith.core.transform.BlockStateRotator
 import top.mc506lw.monolith.core.transform.CoordinateTransform
 import top.mc506lw.monolith.core.transform.Facing
-import org.joml.Quaternionf
+import org.joml.AxisAngle4f
 import org.joml.Vector3f
-import java.lang.Math.toRadians
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object DisplayEntityManager {
 
-    private val siteEntities = ConcurrentHashMap<UUID, MutableList<UUID>>()
+    private val siteDisplays = ConcurrentHashMap<UUID, MutableMap<Vector3i, BlockDisplay>>()
 
-    private fun rotateVectorY(vec: Vector3f, rotationSteps: Int): Vector3f {
-        if (rotationSteps == 0) return vec
-
-        val angle = toRadians((rotationSteps * 90).toDouble()).toFloat()
-        val cos = kotlin.math.cos(angle)
-        val sin = kotlin.math.sin(angle)
-
-        return Vector3f(
-            vec.x * cos - vec.z * sin,
-            vec.y,
-            vec.x * sin + vec.z * cos
-        )
-    }
-
-    private fun rotateQuaternionY(rotationSteps: Int): Quaternionf {
-        if (rotationSteps == 0) return Quaternionf()
-
-        val angle = toRadians((rotationSteps * 90).toDouble()).toFloat()
-        return Quaternionf().rotateY(angle)
-    }
-
-    fun spawnDisplayEntities(
+    fun spawnVirtualView(
         siteId: UUID,
-        displayEntities: List<DisplayEntityData>,
+        assembledShape: Shape,
         anchorLocation: Location,
         facing: Facing,
-        centerOffset: Vector3i = Vector3i.ZERO
+        controllerOffset: Vector3i
     ): Int {
         val world = anchorLocation.world ?: return 0
         val transform = CoordinateTransform(facing)
+        val rotationSteps = facing.rotationSteps
         val controllerPos = Vector3i(
             anchorLocation.blockX,
             anchorLocation.blockY,
             anchorLocation.blockZ
         )
-        val rotationSteps = facing.rotationSteps
 
-        Bukkit.getLogger().info("[DisplayEntityManager] spawnDisplayEntities: anchor=$anchorLocation, facing=$facing, centerOffset=$centerOffset, count=${displayEntities.size}")
+        Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualView: 开始, siteId=$siteId")
+        Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualView: assembledShape.blocks.size=${assembledShape.blocks.size}, controllerPos=$controllerPos, facing=$facing, controllerOffset=$controllerOffset")
 
-        val spawnedIds = mutableListOf<UUID>()
-        var spawnedCount = 0
+        val displays = mutableMapOf<Vector3i, BlockDisplay>()
+        var successCount = 0
+        var failCount = 0
 
-        for (data in displayEntities) {
-                val worldPos = transform.toWorldPosition(
-                    controllerPos = controllerPos,
-                    relativePos = data.position,
-                    centerOffset = centerOffset
-                )
+        for ((index, entry) in assembledShape.blocks.withIndex()) {
+            val worldPos = transform.toWorldPosition(
+                controllerPos = controllerPos,
+                relativePos = entry.position,
+                centerOffset = controllerOffset
+            )
 
-                if (!world.isChunkLoaded(worldPos.x shr 4, worldPos.z shr 4)) continue
+            if (!world.isChunkLoaded(worldPos.x shr 4, worldPos.z shr 4)) continue
 
-                val location = Location(
+            val rotatedBlockData = BlockStateRotator.rotate(entry.blockData.clone(), rotationSteps)
+
+            if (index < 5) {
+                Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualView: entry[$index] pos=${entry.position}, blockData=${entry.blockData.material}, rotated=$rotatedBlockData, worldPos=$worldPos")
+            }
+
+            val location = Location(
                 world,
                 worldPos.x.toDouble(),
                 worldPos.y.toDouble(),
                 worldPos.z.toDouble()
             )
 
-            val rotatedTranslation = rotateVectorY(data.translation, rotationSteps)
-            val rotationQuat = rotateQuaternionY(rotationSteps)
-            val rotatedRotation = Quaternionf(data.rotation).mul(rotationQuat)
-
-            Bukkit.getLogger().info("[DisplayEntityManager] 实体#${spawnedCount + 1}: savedPos=${data.position}, originalTrans=${data.translation}, rotatedTrans=$rotatedTranslation, worldPos=$worldPos")
-
             try {
-                val entity = when (data.entityType) {
-                    DisplayType.BLOCK -> {
-                        if (data.blockData != null) {
-                            world.spawn(location, BlockDisplay::class.java) { d ->
-                                d.block = data.blockData
-                                d.transformation = Transformation(
-                                    rotatedTranslation,
-                                    rotatedRotation,
-                                    data.scale,
-                                    org.joml.Quaternionf()
-                                )
-                                d.isPersistent = false
-                            }
-                        } else null
-                    }
-
-                    DisplayType.ITEM -> {
-                        if (data.itemStack != null) {
-                            world.spawn(location, ItemDisplay::class.java) { d ->
-                                d.setItemStack(data.itemStack)
-                                d.transformation = Transformation(
-                                    rotatedTranslation,
-                                    rotatedRotation,
-                                    data.scale,
-                                    org.joml.Quaternionf()
-                                )
-                                d.isPersistent = false
-                            }
-                        } else null
-                    }
+                val display = world.spawn(location, BlockDisplay::class.java) { d ->
+                    d.block = rotatedBlockData
+                    d.isPersistent = false
+                    d.brightness = Display.Brightness(15, 15)
                 }
-
-                if (entity != null) {
-                    spawnedIds.add(entity.uniqueId)
-                    spawnedCount++
+                displays[worldPos] = display
+                successCount++
+            } catch (e: Exception) {
+                failCount++
+                if (failCount <= 3) {
+                    Bukkit.getLogger().warning("[DisplayEntityManager] spawnVirtualView: 生成展示实体失败 at $worldPos: ${e.message}")
                 }
-            } catch (_: Exception) {}
+            }
         }
 
-        if (spawnedIds.isNotEmpty()) {
-            siteEntities[siteId] = spawnedIds
+        if (displays.isNotEmpty()) {
+            siteDisplays[siteId] = displays
         }
 
-        return spawnedCount
+        Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualView: 完成! 成功=$successCount, 失败=$failCount, 总计=${assembledShape.blocks.size}")
+
+        return successCount
     }
 
     fun removeAllForSite(siteId: UUID): Int {
-        val ids = siteEntities.remove(siteId) ?: return 0
-        var removed = 0
+        val displays = siteDisplays.remove(siteId) ?: return 0
 
-        for (uuid in ids) {
+        var removed = 0
+        for ((_, display) in displays) {
             try {
-                for (world in Bukkit.getWorlds()) {
-                    val entity = world.getEntity(uuid)
-                    if (entity != null) {
-                        entity.remove()
-                        removed++
-                        break
-                    }
+                if (display.isValid) {
+                    display.remove()
+                    removed++
                 }
             } catch (_: Exception) {}
         }
@@ -151,17 +106,16 @@ object DisplayEntityManager {
         return removed
     }
 
+    fun hasDisplaysForSite(siteId: UUID): Boolean = siteDisplays.containsKey(siteId)
+
     fun cleanup() {
-        for ((_, ids) in siteEntities) {
-            for (uuid in ids) {
+        for ((_, displays) in siteDisplays) {
+            for ((_, display) in displays) {
                 try {
-                    for (world in Bukkit.getWorlds()) {
-                        val entity = world.getEntity(uuid)
-                        entity?.remove()
-                    }
+                    display.remove()
                 } catch (_: Exception) {}
             }
         }
-        siteEntities.clear()
+        siteDisplays.clear()
     }
 }

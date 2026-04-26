@@ -80,7 +80,7 @@ class PrinterTask private constructor(
                     val entry = EasyBuildManager.findGhostEntryAt(x, y, z) ?: continue
                     val (site, ghost) = entry
 
-                    if (site.state != BuildSiteState.BUILDING_LAYERS) continue
+                    if (site.state != BuildSiteState.BUILDING) continue
                     if (site.isCompleted) continue
                     if (!BuildSiteManager.isActiveSite(site.id)) continue
 

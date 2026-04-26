@@ -97,6 +97,13 @@ object BuildSiteManager {
         val siteId = locationIndex[key] ?: return null
         return sites[siteId]
     }
+
+    fun getSiteAt(pos: Vector3i): BuildSite? {
+        for (site in getAllActiveSites()) {
+            if (site.containsPosition(pos)) return site
+        }
+        return null
+    }
     
     fun getSiteAtBlock(worldName: String, x: Int, y: Int, z: Int): BuildSite? {
         val key = "$worldName|$x|$y|$z"

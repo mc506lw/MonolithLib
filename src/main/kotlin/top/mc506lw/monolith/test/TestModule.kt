@@ -10,6 +10,7 @@ import top.mc506lw.monolith.core.model.BuildStage
 import top.mc506lw.monolith.core.model.Shape
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.test.blocks.TestBlocks
+import top.mc506lw.monolith.test.blocks.CustomStructureController
 import top.mc506lw.monolith.test.blocks.FurnaceCoreBlock
 
 object TestModule {
@@ -76,8 +77,10 @@ object TestModule {
             stages = mapOf(BuildStage.SCAFFOLD to rebarShape, BuildStage.ASSEMBLED to rebarShape),
             meta = BlueprintMeta(
                 displayName = "示例Rebar机器",
-                description = "一个需要Rebar组件的5x3x5机器 - 演示验改分离的完整流程"
-            )
+                description = "一个需要Rebar组件的5x3x5机器 - 演示验改分离的完整流程",
+                controllerOffset = Vector3i(2, 1, 2)
+            ),
+            controllerRebarKey = CustomStructureController.KEY
         )
 
         api.registry.register(rebarBlueprint)

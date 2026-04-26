@@ -44,7 +44,7 @@ object EasyBuildManager : Listener {
         ghostIndex.clear()
         
         for (site in BuildSiteManager.getAllActiveSites()) {
-            if (site.isCompleted || site.state != BuildSiteState.BUILDING_LAYERS) continue
+            if (site.isCompleted || site.state != BuildSiteState.BUILDING) continue
             
             val currentLayerY = site.getCurrentLayerY() ?: continue
             
@@ -60,7 +60,7 @@ object EasyBuildManager : Listener {
     }
     
     fun onSiteUpdated(site: BuildSite) {
-        if (site.isCompleted || site.state != BuildSiteState.BUILDING_LAYERS) {
+        if (site.isCompleted || site.state != BuildSiteState.BUILDING) {
             for (ghost in site.allGhostBlocks) {
                 ghostIndex.remove(PosKey(ghost.worldPos.x, ghost.worldPos.y, ghost.worldPos.z))
             }
