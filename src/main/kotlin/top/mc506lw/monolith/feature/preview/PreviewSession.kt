@@ -80,7 +80,9 @@ class PreviewSession(
         private set
     var isCancelled: Boolean = false
         private set
+    var showAllLayers: Boolean = false
     
+    val ghostBlockCount: Int get() = ghostBlocks.size
     val minLayer: Int
     val maxLayer: Int
     
@@ -96,7 +98,7 @@ class PreviewSession(
     }
     
     private fun initializeGhostBlocks() {
-        val shape: Shape = blueprint.assembledShape
+        val shape: Shape = blueprint.scaffoldShape
         val centerOffset = blueprint.meta.controllerOffset
         val rotationSteps = transform.facing.rotationSteps
         
@@ -146,23 +148,22 @@ class PreviewSession(
         displayEntities.clear()
     }
     
+    private var updateTick = 0
+    
     fun update(player: Player): UpdateResult {
         if (!isActive || isComplete || isCancelled) {
+            if (displayEntities.isEmpty() && ghostBlocks.isNotEmpty()) {
+                org.bukkit.Bukkit.getLogger().warning("[Preview] update退出(STOPPED): isActive=$isActive, isComplete=$isComplete, isCancelled=$isCancelled, ghosts=${ghostBlocks.size}")
+            }
             return UpdateResult.STOPPED
         }
         
         val world = controllerLocation.world
         if (world == null || player.world != world) {
+            if (displayEntities.isEmpty()) {
+                org.bukkit.Bukkit.getLogger().warning("[Preview] world不匹配: controllerWorld=${controllerLocation?.world?.name}, playerWorld=${player.world.name}, controllerLoc=$controllerLocation")
+            }
             return UpdateResult.CONTINUE
-        }
-        
-        val controllerBlock = world.getBlockAt(
-            controllerLocation.blockX,
-            controllerLocation.blockY,
-            controllerLocation.blockZ
-        )
-        if (controllerBlock.type.isAir) {
-            return UpdateResult.CONTROLLER_BROKEN
         }
         
         val playerLoc = player.location
@@ -175,7 +176,7 @@ class PreviewSession(
         val visiblePositions = mutableSetOf<Vector3i>()
         
         for (ghost in ghostBlocks) {
-            if (ghost.worldPos.y != currentLayer) continue
+            if (!showAllLayers && ghost.worldPos.y != currentLayer) continue
             
             val dx = ghost.worldPos.x - playerBlockX
             val dy = ghost.worldPos.y - playerBlockY
@@ -189,13 +190,33 @@ class PreviewSession(
             }
         }
         
+        updateTick++
+        if (updateTick <= 3) {
+            val sampleGhost = ghostBlocks.firstOrNull()
+            val sampleDist = sampleGhost?.let {
+                val ddx = (it.worldPos.x - playerBlockX).toDouble()
+                val ddy = (it.worldPos.y - playerBlockY).toDouble()
+                val ddz = (it.worldPos.z - playerBlockZ).toDouble()
+                kotlin.math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz)
+            }
+            org.bukkit.Bukkit.getLogger().info("[Preview] tick#$updateTick: player=($playerBlockX,$playerBlockY,$playerBlockZ), controller=${controllerLocation.blockX},${controllerLocation.blockY},${controllerLocation.blockZ}, visible=${visiblePositions.size}/${ghostBlocks.size}, entities=${displayEntities.size}, nearestGhostDist=$sampleDist")
+            
+            if (visiblePositions.isNotEmpty() && displayEntities.size < visiblePositions.size) {
+                org.bukkit.Bukkit.getLogger().warning("[Preview] tick#$updateTick: 有${visiblePositions.size}个可见位置但只有${displayEntities.size}个实体! 部分spawn可能失败")
+            }
+        }
+        
         val toRemove = displayEntities.keys.filter { it !in visiblePositions }
         toRemove.forEach { pos ->
             displayEntities[pos]?.remove()
             displayEntities.remove(pos)
         }
         
-        val completed = checkLayerCompletion()
+        val completed = if (showAllLayers) {
+            ghostBlocks.isNotEmpty() && ghostBlocks.all { it.currentState == GhostColor.CORRECT }
+        } else {
+            checkLayerCompletion()
+        }
         return if (completed) UpdateResult.COMPLETED else UpdateResult.CONTINUE
     }
     
@@ -222,9 +243,10 @@ class PreviewSession(
         
         display?.let { d ->
             d.glowColorOverride = newState.color
-            d.isGlowing = true
         }
     }
+    
+    private var spawnCount = 0
     
     private fun getOrCreateDisplayEntity(ghost: GhostBlock): BlockDisplay? {
         val existing = displayEntities[ghost.worldPos]
@@ -238,23 +260,28 @@ class PreviewSession(
         return try {
             val display = world.spawn(location, BlockDisplay::class.java) { d ->
                 d.block = ghost.previewBlockData
-                d.isGlowing = true
                 d.glowColorOverride = ghost.currentState.color
                 d.isPersistent = false
                 d.brightness = Display.Brightness(15, 15)
                 
-                val scale = 0.5f
+                val scale = 1.0f
                 d.transformation = Transformation(
-                    Vector3f(0.25f, 0.25f, 0.25f),
+                    Vector3f(0f, 0f, 0f),
                     AxisAngle4f(),
                     Vector3f(scale, scale, scale),
                     AxisAngle4f()
                 )
             }
             
+            spawnCount++
+            if (spawnCount <= 3) {
+                org.bukkit.Bukkit.getLogger().info("[Preview] spawn#$spawnCount: pos=${ghost.worldPos}, block=${ghost.previewBlockData.material}, valid=${display.isValid}, entityID=${display.entityId}")
+            }
+            
             displayEntities[ghost.worldPos] = display
             display
         } catch (e: Exception) {
+            org.bukkit.Bukkit.getLogger().warning("[Preview] 生成BlockDisplay失败: pos=${ghost.worldPos}, error=${e.javaClass.simpleName}: ${e.message}")
             null
         }
     }

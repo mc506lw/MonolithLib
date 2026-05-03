@@ -17,15 +17,29 @@ import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerQuitEvent
+import org.bukkit.event.player.PlayerItemHeldEvent
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
 import top.mc506lw.monolith.common.I18n
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.transform.Facing
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 class BuildSiteListener : Listener {
 
     private val legacy = LegacyComponentSerializer.legacySection()
+
+    private data class PendingConfirmation(
+        val blueprintId: String,
+        val targetLocation: Location,
+        val facing: Facing,
+        val timestamp: Long
+    )
+
+    private val pendingConfirmations = ConcurrentHashMap<UUID, PendingConfirmation>()
+    private val confirmTimeoutMs = 30_000L
+    private val recentConfirmations = ConcurrentHashMap<UUID, Long>()
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     fun onBlockPlace(event: BlockPlaceEvent) {
@@ -51,12 +65,19 @@ class BuildSiteListener : Listener {
         val brokenBlock = event.block
         val brokenPos = Vector3i(brokenBlock.x, brokenBlock.y, brokenBlock.z)
 
-        val site = BuildSiteManager.getSiteAt(brokenPos) ?: return
+        val site = BuildSiteManager.getSiteAt(brokenPos)
+        if (site != null) {
+            when (site.state) {
+                BuildSiteState.BUILDING -> handleBreakInBuilding(site, brokenPos, brokenBlock, player, event)
+                BuildSiteState.AWAITING_CORE -> handleBreakInAwaitingCore(site, brokenPos, brokenBlock, player, event)
+                BuildSiteState.VIRTUAL -> handleBreakInVirtual(site, brokenPos, brokenBlock, player, event)
+            }
+            return
+        }
 
-        when (site.state) {
-            BuildSiteState.BUILDING -> handleBreakInBuilding(site, brokenPos, brokenBlock, player, event)
-            BuildSiteState.AWAITING_CORE -> handleBreakInAwaitingCore(site, brokenPos, brokenBlock, player, event)
-            BuildSiteState.VIRTUAL -> handleBreakInVirtual(site, brokenPos, brokenBlock, player, event)
+        val completedSite = BuildSiteManager.getCompletedSiteAt(brokenPos)
+        if (completedSite != null) {
+            handleBreakInCompleted(completedSite, brokenPos, brokenBlock, player, event)
         }
     }
 
@@ -107,6 +128,18 @@ class BuildSiteListener : Listener {
         for (site in BuildSiteManager.getAllActiveSites()) {
             site.removeRenderingForPlayer(event.player.uniqueId)
         }
+        pendingConfirmations.remove(event.player.uniqueId)
+        BuildSitePreviewManager.stopPreview(event.player)
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    fun onPlayerItemHeld(event: PlayerItemHeldEvent) {
+        val player = event.player
+        if (BuildSitePreviewManager.hasActivePreview(player)) {
+            player.sendMessage("§e[MonolithLib] §f切换物品栏，预览已取消")
+            BuildSitePreviewManager.stopPreview(player)
+            pendingConfirmations.remove(player.uniqueId)
+        }
     }
 
     private fun handleBlueprintPlace(event: PlayerInteractEvent, player: Player, item: ItemStack) {
@@ -126,6 +159,95 @@ class BuildSiteListener : Listener {
             player.sendMessage(legacy.serialize(I18n.Message.BuildSite.siteExists(blueprintId)))
             return
         }
+        
+        val lastConfirmTime = recentConfirmations[player.uniqueId] ?: 0L
+        if (System.currentTimeMillis() - lastConfirmTime < 2000L) {
+            return
+        }
+        
+        for (site in BuildSiteManager.getAllActiveSites()) {
+            if (site.containsPosition(Vector3i(targetLocation.blockX, targetLocation.blockY, targetLocation.blockZ))) {
+                player.sendMessage("§c[MonolithLib] 该位置已在工地范围内")
+                return
+            }
+        }
+
+        val pending = pendingConfirmations[player.uniqueId]
+        if (pending != null && pending.blueprintId == blueprintId
+            && pending.targetLocation.blockX == targetLocation.blockX
+            && pending.targetLocation.blockY == targetLocation.blockY
+            && pending.targetLocation.blockZ == targetLocation.blockZ
+            && System.currentTimeMillis() - pending.timestamp < confirmTimeoutMs
+        ) {
+            confirmBlueprintPlace(event, player, item, blueprint, blueprintId, targetLocation, facing)
+            return
+        }
+
+        startPreviewPhase(event, player, blueprint, blueprintId, targetLocation, facing)
+    }
+
+    private fun startPreviewPhase(
+        event: PlayerInteractEvent,
+        player: Player,
+        blueprint: top.mc506lw.monolith.core.model.Blueprint,
+        blueprintId: String,
+        targetLocation: Location,
+        facing: Facing
+    ) {
+        event.isCancelled = true
+
+        val existingPreview = BuildSitePreviewManager.getPreview(player)
+        
+        if (existingPreview != null && existingPreview.isActive) {
+            val moved = BuildSitePreviewManager.movePreviewTo(player, targetLocation)
+            if (moved) {
+                player.sendMessage("")
+                player.sendMessage("§a§l[MonolithLib] §f预览已移动到新位置")
+                player.sendMessage("§a§l[MonolithLib] §f再次右键同一位置 §e确认创建§f 工地")
+                
+                pendingConfirmations[player.uniqueId] = PendingConfirmation(
+                    blueprintId = blueprintId,
+                    targetLocation = targetLocation.clone(),
+                    facing = facing,
+                    timestamp = System.currentTimeMillis()
+                )
+                return
+            }
+        }
+
+        BuildSitePreviewManager.stopPreview(player)
+
+        val validationResult = BuildSiteValidator.validate(blueprint, targetLocation, facing)
+
+        BuildSitePreviewManager.startPreview(player, blueprint, targetLocation, facing, validationResult)
+
+        for (msg in BuildSitePreviewManager.getPreview(player)?.getSummaryMessage() ?: emptyList()) {
+            player.sendMessage(msg)
+        }
+
+        player.sendMessage("")
+        player.sendMessage("§a§l[MonolithLib] §f再次右键同一位置 §e确认创建§f 工地")
+        player.sendMessage("§7(30秒内有效，移动或滚动离开较远会取消)")
+
+        pendingConfirmations[player.uniqueId] = PendingConfirmation(
+            blueprintId = blueprintId,
+            targetLocation = targetLocation.clone(),
+            facing = facing,
+            timestamp = System.currentTimeMillis()
+        )
+    }
+
+    private fun confirmBlueprintPlace(
+        event: PlayerInteractEvent,
+        player: Player,
+        item: ItemStack,
+        blueprint: top.mc506lw.monolith.core.model.Blueprint,
+        blueprintId: String,
+        targetLocation: Location,
+        facing: Facing
+    ) {
+        pendingConfirmations.remove(player.uniqueId)
+        BuildSitePreviewManager.stopPreview(player)
 
         val site = BuildSiteManager.createSite(blueprint, targetLocation, facing)
         if (site == null) {
@@ -159,6 +281,8 @@ class BuildSiteListener : Listener {
         site.renderForPlayer(player)
         EasyBuildManager.onSiteUpdated(site)
         BuildSiteManager.saveAll()
+        
+        recentConfirmations[player.uniqueId] = System.currentTimeMillis()
     }
 
     private fun handleControllerActivation(event: PlayerInteractEvent, player: Player, item: ItemStack) {
@@ -211,6 +335,7 @@ class BuildSiteListener : Listener {
 
     private fun activateVirtualMachine(site: BuildSite, player: Player) {
         site.transitionToVirtual()
+        site.markCompleted()
 
         player.sendMessage(legacy.serialize(I18n.Message.BuildSite.structureActivated))
         player.playSound(player.location, Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f)
@@ -324,26 +449,73 @@ class BuildSiteListener : Listener {
     private fun handleBreakInVirtual(
         site: BuildSite, pos: Vector3i, block: Block, player: Player, event: BlockBreakEvent
     ) {
-        if (!site.isVirtualPosition(pos)) return
+        Bukkit.getLogger().info("[MonolithLib] handleBreakInVirtual: 检测到破坏, pos=$pos, siteId=${site.id}, state=${site.state}")
+
+        if (!site.isVirtualPosition(pos)) {
+            Bukkit.getLogger().info("[MonolithLib] handleBreakInVirtual: ⚠️ 位置不在虚拟区域内, isVirtualPosition=false")
+            return
+        }
 
         event.isCancelled = true
 
         disassembleVirtualMachine(site, player)
     }
 
+    private fun handleBreakInCompleted(
+        site: BuildSite, pos: Vector3i, block: Block, player: Player, event: BlockBreakEvent
+    ) {
+        if (!site.containsPosition(pos)) return
+
+        event.isCancelled = true
+
+        val reverted = site.revertFromCompleted(player)
+        if (reverted) {
+            if (site.coreRebarKey != null) {
+                try {
+                    val controllerItem = io.github.pylonmc.rebar.item.builder.ItemStackBuilder
+                        .rebar(Material.LODESTONE, site.coreRebarKey)
+                        .build()
+                    player.world.dropItemNaturally(player.location, controllerItem)
+                } catch (_: Exception) {}
+            }
+
+            site.renderForPlayer(player)
+            EasyBuildManager.onSiteUpdated(site)
+            BuildSiteManager.saveAll()
+        }
+    }
+
     private fun disassembleVirtualMachine(site: BuildSite, player: Player) {
+        val defaultDrop = if (site.coreRebarKey != null) {
+            try {
+                io.github.pylonmc.rebar.item.builder.ItemStackBuilder
+                    .rebar(Material.LODESTONE, site.coreRebarKey)
+                    .build()
+            } catch (e: Exception) {
+                ItemStack(Material.LODESTONE)
+            }
+        } else {
+            null
+        }
+
+        val disassembleEvent = BuildSiteDisassembleEvent(
+            site = site,
+            player = player,
+            dropRebarItem = defaultDrop != null,
+            customDrop = defaultDrop
+        )
+
+        Bukkit.getPluginManager().callEvent(disassembleEvent)
+
+        if (disassembleEvent.isCancelled) return
+
         val success = site.disassembleFromVirtual()
         if (!success) return
 
-        if (site.coreRebarKey != null) {
-            try {
-                val rebarItem = io.github.pylonmc.rebar.item.builder.ItemStackBuilder
-                    .rebar(Material.LODESTONE, site.coreRebarKey)
-                    .build()
-                player.world.dropItemNaturally(player.location, rebarItem)
-            } catch (e: Exception) {
-                val fallbackItem = ItemStack(Material.LODESTONE)
-                player.world.dropItemNaturally(player.location, fallbackItem)
+        if (disassembleEvent.dropRebarItem) {
+            val drop = disassembleEvent.customDrop
+            if (drop != null) {
+                player.world.dropItemNaturally(player.location, drop)
             }
         }
 
@@ -357,17 +529,41 @@ class BuildSiteListener : Listener {
     private fun cancelBuildSite(
         site: BuildSite, player: Player, event: BlockBreakEvent
     ) {
-        event.isDropItems = false
-
-        Bukkit.getLogger().info("[MonolithLib] cancelBuildSite: 取消工地 ${site.id}, 保留玩家放置的方块")
-
-        site.removeCoreGlass()
-        site.removeAllRenderings()
-        site.removeCoreItemDisplay()
-
         val blueprintItem = BlueprintItem.create(site.blueprintId)
         BlueprintItem.setFacing(blueprintItem, site.facing)
-        player.inventory.addItem(blueprintItem)
+
+        val cancelEvent = BuildSiteCancelEvent(
+            site = site,
+            player = player,
+            returnBlueprint = true,
+            cleanUp = true,
+            droppedItem = blueprintItem
+        )
+
+        Bukkit.getPluginManager().callEvent(cancelEvent)
+
+        if (cancelEvent.isCancelled) {
+            event.isCancelled = true
+            return
+        }
+
+        event.isDropItems = false
+
+        if (cancelEvent.cleanUp) {
+            Bukkit.getLogger().info("[MonolithLib] cancelBuildSite: 清理工地 ${site.id}")
+            site.removeCoreGlass()
+            site.removeAllRenderings()
+            site.removeCoreItemDisplay()
+        } else {
+            Bukkit.getLogger().info("[MonolithLib] cancelBuildSite: 跳过清理 (cleanUp=false)")
+        }
+
+        if (cancelEvent.returnBlueprint) {
+            val drop = cancelEvent.droppedItem
+            if (drop != null) {
+                player.inventory.addItem(drop)
+            }
+        }
 
         player.sendMessage(legacy.serialize(I18n.Message.BuildSite.siteCancelled))
 

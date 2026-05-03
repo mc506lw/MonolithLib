@@ -80,6 +80,11 @@ object BinaryFormat : StructureSerializer {
             
             writeString(dos, blueprint.meta.displayName)
             writeString(dos, blueprint.meta.description)
+
+            val displayOffset = blueprint.meta.displayOffset
+            dos.writeShort(displayOffset.x)
+            dos.writeShort(displayOffset.y)
+            dos.writeShort(displayOffset.z)
             
             dos.writeInt(blueprint.slots.size)
             for ((slotId, pos) in blueprint.slots) {
@@ -154,11 +159,16 @@ object BinaryFormat : StructureSerializer {
         
         val displayName = readString(dis)
         val description = readString(dis)
-        
+
+        val displayOffsetX = dis.readShort().toInt()
+        val displayOffsetY = dis.readShort().toInt()
+        val displayOffsetZ = dis.readShort().toInt()
+
         val meta = BlueprintMeta(
             displayName = displayName,
             description = description,
-            controllerOffset = Vector3i(centerX, centerY, centerZ)
+            controllerOffset = Vector3i(centerX, centerY, centerZ),
+            displayOffset = Vector3i(displayOffsetX, displayOffsetY, displayOffsetZ)
         )
         
         val slots = mutableMapOf<String, Vector3i>()

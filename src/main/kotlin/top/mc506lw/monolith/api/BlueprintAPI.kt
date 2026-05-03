@@ -30,6 +30,14 @@ class BlueprintAPI : MonolithAPI {
         }
 
         Logger.getLogger("MonolithLib").info("Reloaded ${blueprints.size} blueprints")
+
+        for (site in buildSite.getAllActiveSites()) {
+            val updated = registry.get(site.blueprintId)
+            if (updated != null) {
+                site.blueprint = updated
+                Logger.getLogger("MonolithLib").info("[BlueprintAPI] 已更新 BuildSite ${site.id} 的蓝图引用: ${site.blueprintId}")
+            }
+        }
     }
 
     internal fun getLegacyBlueprint(id: String): Blueprint? = registry.get(id)

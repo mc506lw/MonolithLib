@@ -9,6 +9,7 @@ import top.mc506lw.monolith.api.MonolithAPI
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.transform.Facing
+import top.mc506lw.monolith.lifecycle.ChunkHandler
 import top.mc506lw.rebar.MonolithLib
 import java.io.File
 import java.util.UUID
@@ -28,6 +29,8 @@ object BuildSiteManager {
     private const val TRACKING_INTERVAL = 5L
     private const val AUTO_SAVE_INTERVAL = 300L
     private const val UNLOAD_DISTANCE_SQ = BuildSite.UNLOAD_DISTANCE.toLong() * BuildSite.UNLOAD_DISTANCE
+
+    val chunkHandler = ChunkHandler()
     
     fun init(plugin: MonolithLib) {
         dataFolder = File(plugin.dataFolder, "buildsites")
@@ -104,6 +107,13 @@ object BuildSiteManager {
         }
         return null
     }
+
+    fun getCompletedSiteAt(pos: Vector3i): BuildSite? {
+        for (site in getAllSites()) {
+            if (site.isCompleted && site.containsPosition(pos)) return site
+        }
+        return null
+    }
     
     fun getSiteAtBlock(worldName: String, x: Int, y: Int, z: Int): BuildSite? {
         val key = "$worldName|$x|$y|$z"
@@ -127,16 +137,16 @@ object BuildSiteManager {
     
     fun removeSite(siteId: UUID) {
         val site = sites.remove(siteId) ?: return
-        
+
         val locationKey = locationToKey(site.anchorLocation)
         locationIndex.remove(locationKey)
-        
+
         site.removeAllRenderings()
         EasyBuildManager.onSiteUpdated(site)
-        
+
         val chunkKey = chunkKeyFromLocation(site.anchorLocation)
         chunkSites[chunkKey]?.remove(siteId)
-        
+
         saveAll()
     }
     
@@ -284,21 +294,26 @@ object BuildSiteManager {
         val y = (data["y"] as? String)?.toIntOrNull() ?: return
         val z = (data["z"] as? String)?.toIntOrNull() ?: return
         val facingStr = data["facing"] as? String ?: "NORTH"
+        val stateStr = data["state"] as? String ?: "BUILDING"
         val layerStr = data["current_layer"] as? String ?: "0"
         val placedStr = data["placed_blocks"] as? String ?: ""
-        
+        val completedStr = data["completed"] as? String ?: "false"
+        val backupStr = data["backup_data"] as? String ?: ""
+
         val api = try { MonolithAPI.getInstance() } catch (_: Exception) { return }
         val blueprint = api.registry.get(blueprintId)
         if (blueprint == null) {
             println("[MonolithLib] 警告: 蓝图 $blueprintId 已不存在，工地 $idStr 将被跳过 (位置: $worldName,$x,$y,$z)")
             return
         }
-        
+
         val world = Bukkit.getWorld(worldName) ?: return
         val location = Location(world, x.toDouble(), y.toDouble(), z.toDouble())
         val facing = try { Facing.valueOf(facingStr) } catch (_: Exception) { Facing.NORTH }
+        val restoredState = try { BuildSiteState.valueOf(stateStr) } catch (_: Exception) { BuildSiteState.BUILDING }
         val currentLayer = layerStr.toIntOrNull() ?: 0
-        
+        val isCompleted = completedStr == "true"
+
         val placedBlocks = if (placedStr.isNotEmpty()) {
             placedStr.split(";").mapNotNull { pos ->
                 val coords = pos.split(",")
@@ -309,17 +324,46 @@ object BuildSiteManager {
                 } else null
             }.toSet()
         } else emptySet()
-        
+
         val site = BuildSite(
             id = UUID.fromString(idStr),
             blueprint = blueprint,
             anchorLocation = location,
             facing = facing,
             initialLayer = currentLayer,
-            initialPlacedBlocks = placedBlocks
+            initialPlacedBlocks = placedBlocks,
+            initialState = restoredState
         )
-        
+
+        if (isCompleted) {
+            site.restoreCompleted()
+        }
+
+        if (backupStr.isNotEmpty()) {
+            for (entry in backupStr.split(";")) {
+                val eqIdx = entry.indexOf('=')
+                if (eqIdx < 0) continue
+                val posPart = entry.substring(0, eqIdx)
+                val dataPart = entry.substring(eqIdx + 1)
+                val coords = posPart.split(",")
+                if (coords.size != 3) continue
+                val bx = coords[0].toIntOrNull() ?: continue
+                val by = coords[1].toIntOrNull() ?: continue
+                val bz = coords[2].toIntOrNull() ?: continue
+                try {
+                    val blockData = Bukkit.createBlockData(dataPart)
+                    site.backupData[Vector3i(bx, by, bz)] = blockData
+                } catch (_: Exception) {}
+            }
+        }
+
         registerSite(site)
+
+        if (restoredState == BuildSiteState.VIRTUAL && isCompleted) {
+            Bukkit.getLogger().info("[BuildSiteManager] 恢复已完成VIRTUAL工地: $idStr, backupData=${site.backupData.size}条")
+        } else if (restoredState == BuildSiteState.VIRTUAL) {
+            Bukkit.getLogger().info("[BuildSiteManager] 恢复VIRTUAL工地: $idStr, Rebar Anchor postLoad将自动恢复展示实体")
+        }
     }
     
     fun saveAll() {
@@ -327,8 +371,6 @@ object BuildSiteManager {
             val lines = mutableListOf<String>()
             
             for ((_, site) in sites) {
-                if (site.isCompleted) continue
-                
                 lines.add("site: ${site.id}")
                 lines.add("  blueprint_id: ${site.blueprintId}")
                 lines.add("  world: ${site.anchorLocation.world?.name}")
@@ -336,10 +378,20 @@ object BuildSiteManager {
                 lines.add("  y: ${site.anchorLocation.blockY}")
                 lines.add("  z: ${site.anchorLocation.blockZ}")
                 lines.add("  facing: ${site.facing.name}")
+                lines.add("  state: ${site.state.name}")
                 lines.add("  current_layer: ${site.currentLayer}")
+                lines.add("  completed: ${site.isCompleted}")
                 
                 val placedStr = site.placedBlocks.joinToString(";") { "${it.x},${it.y},${it.z}" }
                 lines.add("  placed_blocks: $placedStr")
+                
+                if (site.backupData.isNotEmpty()) {
+                    val backupStr = site.backupData.entries.joinToString(";") { (pos, data) ->
+                        "${pos.x},${pos.y},${pos.z}=${data.getAsString()}"
+                    }
+                    lines.add("  backup_data: $backupStr")
+                }
+                
                 lines.add("")
             }
             

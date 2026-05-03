@@ -8,12 +8,14 @@ import org.bukkit.NamespacedKey
 import org.bukkit.block.data.BlockData
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
+import org.bukkit.entity.Entity
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.util.Transformation
 import org.joml.AxisAngle4f
+import org.joml.Quaternionf
 import org.joml.Vector3f
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Blueprint
@@ -93,11 +95,12 @@ data class SiteGhostBlock(
 
 class BuildSite(
     val id: UUID,
-    val blueprint: Blueprint,
+    var blueprint: Blueprint,
     val anchorLocation: Location,
     val facing: Facing,
     initialLayer: Int = 0,
-    initialPlacedBlocks: Set<Vector3i> = emptySet()
+    initialPlacedBlocks: Set<Vector3i> = emptySet(),
+    initialState: BuildSiteState = BuildSiteState.BUILDING
 ) {
     val blueprintId: String get() = blueprint.id
 
@@ -106,7 +109,7 @@ class BuildSite(
     var currentLayer: Int = initialLayer
         private set
 
-    var state: BuildSiteState = BuildSiteState.BUILDING
+    var state: BuildSiteState = initialState
         private set
 
     var placedBlocks: MutableSet<Vector3i> = ConcurrentHashMap.newKeySet<Vector3i>()
@@ -457,7 +460,6 @@ class BuildSite(
         val world = anchorLocation.world ?: return
 
         Bukkit.getLogger().info("[BuildSite] transitionToVirtual: 开始, siteId=$id, blueprintId=$blueprintId")
-        Bukkit.getLogger().info("[BuildSite] transitionToVirtual: assembledShape.blocks.size=${blueprint.assembledShape.blocks.size}, allGhostBlocks.size=${allGhostBlocks.size}")
 
         backupData.clear()
         for (ghost in allGhostBlocks) {
@@ -467,36 +469,180 @@ class BuildSite(
 
         for (ghost in allGhostBlocks) {
             val block = world.getBlockAt(ghost.worldPos.x, ghost.worldPos.y, ghost.worldPos.z)
-            block.type = Material.STRUCTURE_VOID
+            block.setType(Material.STRUCTURE_VOID, false)
         }
 
         removeCoreItemDisplay()
         clearCurrentLayerRenderings()
         removeCoreGlass()
 
-        val assembledShape = blueprint.assembledShape
-        val isAssembledValid = assembledShape.blocks.isNotEmpty() &&
-            assembledShape.blocks.any { it.blockData.material != Material.STRUCTURE_VOID }
-
-        val displayShape = if (isAssembledValid) {
-            Bukkit.getLogger().info("[BuildSite] transitionToVirtual: 使用assembledShape数据")
-            assembledShape
-        } else {
-            Bukkit.getLogger().info("[BuildSite] transitionToVirtual: ⚠️ assembledShape无效(全STRUCTURE_VOID), 使用backupData构建展示Shape")
-            buildDisplayShapeFromBackup()
-        }
-
-        val spawnedCount = top.mc506lw.monolith.feature.display.DisplayEntityManager.spawnVirtualView(
-            siteId = id,
-            assembledShape = displayShape,
-            anchorLocation = anchorLocation,
-            facing = facing,
-            controllerOffset = blueprint.meta.controllerOffset
-        )
-
-        Bukkit.getLogger().info("[BuildSite] transitionToVirtual: 展示实体生成数量=$spawnedCount")
+        placeAnchorAndSpawnEntities(world)
 
         state = BuildSiteState.VIRTUAL
+    }
+
+    private fun placeAnchorAndSpawnEntities(world: org.bukkit.World) {
+        val coreBlock = world.getBlockAt(coreWorldPos.x, coreWorldPos.y, coreWorldPos.z)
+
+        io.github.pylonmc.rebar.block.BlockStorage.placeBlock(
+            coreBlock,
+            top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor.KEY
+        )
+
+        Bukkit.getLogger().info("[BuildSite] placeAnchorAndSpawnEntities: 已放置Anchor方块, 等待Rebar初始化... pos=(${coreWorldPos.x},${coreWorldPos.y},${coreWorldPos.z})")
+
+        org.bukkit.Bukkit.getScheduler().runTaskLater(top.mc506lw.rebar.MonolithLib.instance, Runnable {
+            val anchor = io.github.pylonmc.rebar.block.BlockStorage.get(coreBlock)
+            if (anchor == null) {
+                Bukkit.getLogger().severe("[BuildSite] placeAnchorAndSpawnEntities: ❌ 无法获取Anchor! pos=(${coreWorldPos.x},${coreWorldPos.y},${coreWorldPos.z})")
+                return@Runnable
+            }
+            if (anchor !is top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor) {
+                Bukkit.getLogger().severe("[BuildSite] placeAnchorAndSpawnEntities: ❌ Anchor类型错误! actual=${anchor::class.simpleName}")
+                return@Runnable
+            }
+
+            Bukkit.getLogger().info("[BuildSite] placeAnchorAndSpawnEntities: ✅ Anchor已就位, 开始注册展示实体...")
+
+            spawnDisplayEntitiesViaAnchor(anchor)
+        }, 1L)
+    }
+
+    private fun spawnDisplayEntitiesViaAnchor(
+        anchor: top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor
+    ) {
+        val displayEntityBlocks = blueprint.displayEntities.filter {
+            it.entityType == top.mc506lw.monolith.core.model.DisplayType.BLOCK && it.blockData != null &&
+            it.blockData!!.material != Material.STRUCTURE_VOID && it.blockData!!.material != Material.AIR
+        }
+
+        if (displayEntityBlocks.isEmpty()) {
+            Bukkit.getLogger().warning("[BuildSite] spawnDisplayEntitiesViaAnchor: 无有效展示实体数据!")
+            return
+        }
+
+        val latestBlueprint = top.mc506lw.monolith.api.MonolithAPI.getInstance().registry.get(blueprintId)
+        val effectiveDisplayOffset = latestBlueprint?.meta?.displayOffset ?: blueprint.meta.displayOffset
+
+        val controllerPos = Vector3i(
+            anchorLocation.blockX,
+            anchorLocation.blockY,
+            anchorLocation.blockZ
+        )
+
+        val rotationSteps = facing.rotationSteps
+
+        Bukkit.getLogger().info("[BuildSite] spawnDisplayEntitiesViaAnchor: 通过Rebar Anchor管理${displayEntityBlocks.size}个实体, 旋转步数=$rotationSteps")
+
+        val groupCenter = calculateGroupCenter(displayEntityBlocks)
+        Bukkit.getLogger().info("[BuildSite] 组质心=(${String.format("%.4f", groupCenter.x)}, ${String.format("%.4f", groupCenter.y)}, ${String.format("%.4f", groupCenter.z)})")
+
+        var successCount = 0
+        var failCount = 0
+
+        for ((index, entity) in displayEntityBlocks.withIndex()) {
+            try {
+                val entityName = "${top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor.ENTITY_PREFIX}$index"
+
+                if (anchor.isHeldEntityPresent(entityName)) {
+                    Bukkit.getLogger().info("[BuildSite]   [$index] 实体已存在, 跳过: $entityName")
+                    successCount++
+                    continue
+                }
+
+                val relOffset = org.joml.Vector3f(
+                    entity.translation.x - groupCenter.x,
+                    entity.translation.y - groupCenter.y,
+                    entity.translation.z - groupCenter.z
+                )
+
+                val rotatedOffset = rotateRelativeOffsetForGroup(relOffset, rotationSteps)
+
+                val finalTrans = org.joml.Vector3f(
+                    groupCenter.x + rotatedOffset.x + effectiveDisplayOffset.x,
+                    groupCenter.y + rotatedOffset.y + effectiveDisplayOffset.y,
+                    groupCenter.z + rotatedOffset.z + effectiveDisplayOffset.z
+                )
+
+                val baseX = anchorLocation.x.toDouble()
+                val baseY = anchorLocation.y.toDouble()
+                val baseZ = anchorLocation.z.toDouble()
+
+                val worldX = baseX + finalTrans.x
+                val worldY = baseY + finalTrans.y
+                val worldZ = baseZ + finalTrans.z
+
+                val spawnLoc = Location(anchorLocation.world, worldX, worldY, worldZ)
+
+                val leftRotation = applyFacingRotationForAnchor(entity.rotation, rotationSteps)
+
+                val scaleX = when (rotationSteps) { 1, 3 -> entity.scale.z else -> entity.scale.x }
+                val scaleZ = when (rotationSteps) { 1, 3 -> entity.scale.x else -> entity.scale.z }
+
+                val transformMatrix = org.joml.Matrix4f()
+                    .translation(0f, 0f, 0f)
+                    .rotate(leftRotation)
+                    .scale(scaleX, entity.scale.y, scaleZ)
+
+                val blockDisplay = io.github.pylonmc.rebar.entity.display.BlockDisplayBuilder()
+                    .material(entity.blockData!!.material)
+                    .transformation(transformMatrix)
+                    .build(spawnLoc)
+
+                anchor.addEntity(entityName, blockDisplay)
+                successCount++
+
+                if (index < 3 || index == displayEntityBlocks.size - 1) {
+                    Bukkit.getLogger().info("[BuildSite]   [$index/${displayEntityBlocks.size}] 注册到Anchor: $entityName | 世界坐标=($worldX, $worldY, $worldZ)")
+                }
+            } catch (e: Exception) {
+                Bukkit.getLogger().warning("[BuildSite] spawnDisplayEntitiesViaAnchor: 实体[$index]生成失败: ${e.message}")
+                e.printStackTrace()
+                failCount++
+            }
+        }
+
+        Bukkit.getLogger().info("[BuildSite] spawnDisplayEntitiesViaAnchor: ✅ 完成! 成功=$successCount, 失败=$failCount (全部由Rebar Anchor管理)")
+    }
+
+    private fun calculateGroupCenter(entities: List<top.mc506lw.monolith.core.model.DisplayEntityData>): org.joml.Vector3f {
+        if (entities.isEmpty()) return org.joml.Vector3f()
+        
+        var cx = 0f
+        var cy = 0f
+        var cz = 0f
+        
+        for (e in entities) {
+            cx += e.translation.x
+            cy += e.translation.y
+            cz += e.translation.z
+        }
+        
+        return org.joml.Vector3f(cx / entities.size, cy / entities.size, cz / entities.size)
+    }
+
+    private fun rotateRelativeOffsetForGroup(offset: org.joml.Vector3f, steps: Int): org.joml.Vector3f {
+        if (steps == 0) return offset
+
+        return when (steps % 4) {
+            1 -> org.joml.Vector3f(offset.z, offset.y, -offset.x)
+            2 -> org.joml.Vector3f(-offset.x, offset.y, -offset.z)
+            3 -> org.joml.Vector3f(-offset.z, offset.y, offset.x)
+            else -> org.joml.Vector3f(offset)
+        }
+    }
+
+    private fun applyFacingRotationForAnchor(originalRotation: org.joml.Quaternionf, rotationSteps: Int): org.joml.Quaternionf {
+        if (rotationSteps == 0) return org.joml.Quaternionf(originalRotation)
+
+        val facingRotation = when (rotationSteps) {
+            1 -> org.joml.Quaternionf().rotateY(kotlin.math.PI.toFloat() / 2f)
+            2 -> org.joml.Quaternionf().rotateY(kotlin.math.PI.toFloat())
+            3 -> org.joml.Quaternionf().rotateY(-kotlin.math.PI.toFloat() / 2f)
+            else -> org.joml.Quaternionf()
+        }
+
+        return org.joml.Quaternionf(facingRotation).mul(originalRotation)
     }
 
     private fun buildDisplayShapeFromBackup(): Shape {
@@ -519,17 +665,37 @@ class BuildSite(
     }
 
     fun disassembleFromVirtual(): Boolean {
-        if (state != BuildSiteState.VIRTUAL) return false
+        if (state != BuildSiteState.VIRTUAL) {
+            Bukkit.getLogger().warning("[BuildSite] disassembleFromVirtual: 状态不是VIRTUAL! 当前状态=$state, siteId=$id")
+            return false
+        }
 
         val world = anchorLocation.world ?: return false
 
-        top.mc506lw.monolith.feature.display.DisplayEntityManager.removeAllForSite(id)
+        Bukkit.getLogger().info("[BuildSite] disassembleFromVirtual: 开始解体, siteId=$id")
+
+        val coreBlock = world.getBlockAt(coreWorldPos.x, coreWorldPos.y, coreWorldPos.z)
+        val anchor = io.github.pylonmc.rebar.block.BlockStorage.get(coreBlock)
+
+        if (anchor is top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor) {
+            anchor.tryRemoveAllEntities()
+            Bukkit.getLogger().info("[BuildSite] disassembleFromVirtual: Anchor已清理所有展示实体")
+        } else {
+            Bukkit.getLogger().warning("[BuildSite] disassembleFromVirtual: 未找到Anchor或类型不匹配, actual=${anchor?.let { it::class.simpleName }}")
+        }
+
+        if (io.github.pylonmc.rebar.block.BlockStorage.isRebarBlock(coreBlock)) {
+            io.github.pylonmc.rebar.block.BlockStorage.breakBlock(coreBlock)
+            Bukkit.getLogger().info("[BuildSite] disassembleFromVirtual: 已通过breakBlock移除Anchor")
+        } else {
+            coreBlock.setType(Material.AIR, false)
+        }
 
         for ((pos, originalData) in backupData) {
             if (!world.isChunkLoaded(pos.x shr 4, pos.z shr 4)) continue
             val block = world.getBlockAt(pos.x, pos.y, pos.z)
             if (io.github.pylonmc.rebar.block.BlockStorage.isRebarBlock(block)) continue
-            block.blockData = originalData.clone()
+            block.setBlockData(originalData.clone(), false)
         }
 
         backupData.clear()
@@ -656,7 +822,7 @@ class BuildSite(
                     val dropItem = ItemStack(coreBlock.type)
                     coreBlock.world.dropItemNaturally(coreBlock.location, dropItem)
                 }
-                coreBlock.type = Material.AIR
+                coreBlock.setType(Material.AIR, false)
             }
         }
 
@@ -679,6 +845,80 @@ class BuildSite(
         currentLayer = targetLayer
 
         return targetLayer
+    }
+
+    fun revertFromCompleted(player: Player? = null): Boolean {
+        if (!isCompleted && state != BuildSiteState.VIRTUAL) return false
+
+        val world = anchorLocation.world ?: return false
+
+        isCompleted = false
+
+        for ((pos, originalData) in backupData) {
+            if (!world.isChunkLoaded(pos.x shr 4, pos.z shr 4)) continue
+            val block = world.getBlockAt(pos.x, pos.y, pos.z)
+            if (block.type == Material.STRUCTURE_VOID) {
+                block.blockData = originalData.clone()
+            }
+        }
+
+        val coreBlock = world.getBlockAt(coreWorldPos.x, coreWorldPos.y, coreWorldPos.z)
+        if (io.github.pylonmc.rebar.block.BlockStorage.isRebarBlock(coreBlock)) {
+            val anchor = io.github.pylonmc.rebar.block.BlockStorage.get(coreBlock)
+            if (anchor is top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor) {
+                anchor.tryRemoveAllEntities()
+            }
+            io.github.pylonmc.rebar.block.BlockStorage.breakBlock(coreBlock)
+        } else {
+            coreBlock.setType(Material.AIR, false)
+        }
+
+        removeAllRenderings()
+        removeCoreItemDisplay()
+        removeCoreGlass()
+
+        state = BuildSiteState.BUILDING
+
+        var targetLayer = -1
+        for (i in layerYLevels.indices) {
+            if (!isLayerFullyPlaced(i)) {
+                targetLayer = i
+                break
+            }
+        }
+        currentLayer = if (targetLayer >= 0) targetLayer else 0
+
+        placedBlocks.clear()
+
+        for (ghost in allGhostBlocks) {
+            if (ghost.isCore) continue
+            val block = anchorLocation.world?.getBlockAt(ghost.worldPos.x, ghost.worldPos.y, ghost.worldPos.z) ?: continue
+            if (ghost.predicate.testMaterialOnly(block.blockData, Predicate.PredicateContext(position = ghost.relativePos, block = block))) {
+                placedBlocks.add(ghost.worldPos)
+            }
+        }
+
+        var allLayersDone = true
+        for (i in layerYLevels.indices) {
+            if (!isLayerFullyPlaced(i)) {
+                allLayersDone = false
+                break
+            }
+        }
+
+        if (allLayersDone) {
+            enterAwaitingCore()
+            player?.sendMessage("§e[MonolithLib] §f所有层已完整，请放置核心控制器")
+        } else {
+            val advanced = advanceToNextIncompleteLayer()
+            if (advanced > 0) {
+                player?.sendMessage("§e[MonolithLib] §f结构已解体，重新进入建造模式 (当前层: ${currentLayer + 1})")
+            } else {
+                player?.sendMessage("§e[MonolithLib] §f结构已解体，重新进入建造模式")
+            }
+        }
+
+        return true
     }
 
     fun getProgress(): Pair<Int, Int> {
@@ -718,6 +958,10 @@ class BuildSite(
         removeCoreItemDisplay()
         removeAllRenderings()
         removeCoreGlass()
+    }
+
+    internal fun restoreCompleted() {
+        isCompleted = true
     }
 
     fun validateDetailed(): DetailedValidationResult {

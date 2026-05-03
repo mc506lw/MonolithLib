@@ -67,6 +67,7 @@ object LitematicaModeManager {
         
         if (state.printer) {
             state.printer = false
+            top.mc506lw.monolith.feature.buildmode.PrinterTask.stop(player)
             cancelAwayTask(playerId)
             if (!state.easyBuild) {
                 playerStates.remove(playerId)
@@ -86,6 +87,7 @@ object LitematicaModeManager {
         
         state.printer = true
         state.wasNearSite = true
+        top.mc506lw.monolith.feature.buildmode.PrinterTask.start(player)
         return true
     }
     
@@ -166,6 +168,10 @@ object LitematicaModeManager {
                 val modes = mutableListOf<String>()
                 if (currentState.easyBuild) modes.add("轻松放置")
                 if (currentState.printer) modes.add("自动打印")
+                
+                if (currentState.printer) {
+                    top.mc506lw.monolith.feature.buildmode.PrinterTask.stop(player)
+                }
                 
                 currentState.easyBuild = false
                 currentState.printer = false

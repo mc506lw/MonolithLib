@@ -148,6 +148,8 @@ class GhostRenderer(private val plugin: MonolithLib) {
     }
     
     private fun updateAllSessions() {
+        StructurePreviewManager.checkTimeouts()
+        
         val toRemove = mutableListOf<String>()
         
         sessions.forEach { (sessionId, session) ->

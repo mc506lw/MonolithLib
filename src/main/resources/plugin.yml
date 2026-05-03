@@ -10,13 +10,9 @@ softdepend: []
 commands:
   monolith:
     description: MonolithLib 主命令
-    usage: /<command> [reload|list|files|preview|construct|build|info]
+    usage: /<command> <preview|build|bp|site|edit|reload>
     permission: monolithlib.base
     aliases: [ml]
-  mltest:
-    description: MonolithLib 测试命令
-    usage: /<command> [list|info|validate|preview|material|stop]
-    permission: monolithlib.test
 
 permissions:
   monolithlib.base:
@@ -28,18 +24,28 @@ permissions:
     children:
       monolithlib.base: true
       monolithlib.reload: true
+      monolithlib.edit: true
   monolithlib.reload:
     description: 允许重新加载结构
     default: op
   monolithlib.preview:
     description: 允许使用预览功能
     default: true
+  monolithlib.build:
+    description: 允许使用建造功能
+    default: true
+  monolithlib.blueprint:
+    description: 允许使用蓝图管理功能
+    default: true
+  monolithlib.site:
+    description: 允许使用工地管理功能
+    default: true
+  monolithlib.edit:
+    description: 允许使用编辑器功能
+    default: op
   monolithlib.debug:
     description: 调试权限
     default: op
-  monolithlib.test:
-    description: 测试命令权限
-    default: true
   monolith.easybuild:
     description: 允许使用轻松放置模式
     default: true

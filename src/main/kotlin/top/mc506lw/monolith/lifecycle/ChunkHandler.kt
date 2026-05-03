@@ -8,26 +8,26 @@ import java.util.concurrent.ConcurrentHashMap
 
 class ChunkHandler : Listener {
     private val lifecycleMap = ConcurrentHashMap<String, BlueprintLifecycle>()
-    
+
     @EventHandler
     fun onChunkUnload(event: ChunkUnloadEvent) {
         val chunkKey = "${event.world.name}_${event.chunk.x}_${event.chunk.z}"
         lifecycleMap[chunkKey]?.handleChunkUnload()
     }
-    
+
     @EventHandler
     fun onChunkLoad(event: ChunkLoadEvent) {
         val chunkKey = "${event.world.name}_${event.chunk.x}_${event.chunk.z}"
         lifecycleMap[chunkKey]?.handleChunkLoad()
     }
-    
-    fun register(key: String, lifecycle: BlueprintLifecycle) {
+
+    fun registerLifecycle(key: String, lifecycle: BlueprintLifecycle) {
         lifecycleMap[key] = lifecycle
     }
-    
-    fun unregister(key: String) {
+
+    fun unregisterLifecycle(key: String) {
         lifecycleMap.remove(key)
     }
-    
+
     fun clear() = lifecycleMap.clear()
 }

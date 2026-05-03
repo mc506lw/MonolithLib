@@ -56,7 +56,7 @@ class PrinterTask private constructor(
             return
         }
 
-        if (!EasyBuildManager.isEnabled(player)) {
+        if (!top.mc506lw.monolith.feature.buildsite.LitematicaModeManager.isPrinterEnabled(player)) {
             cancel()
             activeTasks.remove(playerId)
             BuildSiteManager.saveAll()

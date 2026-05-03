@@ -128,6 +128,8 @@ class BuildSiteFacadeImpl : BuildSiteFacade {
     override fun getSite(location: Location): BuildSite? {
         return BuildSiteManager.getSiteAt(location)
     }
+
+    override fun getAllActiveSites(): List<BuildSite> = BuildSiteManager.getAllActiveSites()
 }
 
 class MonolithAPIImpl(

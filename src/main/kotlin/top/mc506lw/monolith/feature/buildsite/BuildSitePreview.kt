@@ -9,12 +9,12 @@ import org.bukkit.block.data.BlockData
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
 import org.bukkit.entity.Player
-import org.bukkit.persistence.PersistentDataType
 import org.bukkit.scheduler.BukkitTask
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import org.bukkit.util.Transformation
 import org.joml.AxisAngle4f
 import org.joml.Vector3f
+import top.mc506lw.monolith.feature.preview.SmoothBoundingBoxRenderer
 import top.mc506lw.rebar.MonolithLib
 import top.mc506lw.monolith.common.I18n
 import top.mc506lw.monolith.core.math.Vector3i
@@ -27,20 +27,11 @@ import java.util.concurrent.ConcurrentHashMap
 object BuildSitePreviewManager {
     
     private val legacy = LegacyComponentSerializer.legacySection()
-    private val PREVIEW_TAG = "monolithlib:buildsite_preview"
     private const val PREVIEW_DURATION_TICKS = 200L
     
     private val activePreviews = ConcurrentHashMap<UUID, BuildSitePreview>()
     private val playerPreviews = ConcurrentHashMap<UUID, UUID>()
     private val previewTasks = ConcurrentHashMap<UUID, BukkitTask>()
-    
-    private val redConcreteData: BlockData by lazy {
-        Bukkit.createBlockData(Material.RED_CONCRETE)
-    }
-    
-    private val yellowConcreteData: BlockData by lazy {
-        Bukkit.createBlockData(Material.YELLOW_CONCRETE)
-    }
     
     fun startPreview(
         player: Player,
@@ -74,10 +65,42 @@ object BuildSitePreviewManager {
         return preview
     }
     
-    private fun scheduleAutoCancel(player: Player) {
-        val existingTask = previewTasks.remove(player.uniqueId)
-        existingTask?.cancel()
+    fun movePreviewTo(player: Player, newAnchorLocation: Location): Boolean {
+        val preview = getPreview(player) ?: return false
+        if (!preview.isActive) return false
         
+        val newAnchorX = newAnchorLocation.blockX
+        val newAnchorY = newAnchorLocation.blockY
+        val newAnchorZ = newAnchorLocation.blockZ
+        
+        val offsetX = newAnchorX - preview.anchorLocation.blockX
+        val offsetY = newAnchorY - preview.anchorLocation.blockY
+        val offsetZ = newAnchorZ - preview.anchorLocation.blockZ
+        
+        if (offsetX == 0 && offsetY == 0 && offsetZ == 0) return true
+        
+        preview.anchorLocation.x = newAnchorX.toDouble()
+        preview.anchorLocation.y = newAnchorY.toDouble()
+        preview.anchorLocation.z = newAnchorZ.toDouble()
+        
+        preview.boxRenderer?.updatePosition(offsetX, offsetY, offsetZ)
+        
+        preview.errorMarkerDisplays.forEach { marker ->
+            if (marker.isValid) {
+                marker.teleport(Location(preview.world,
+                    marker.location.x + offsetX,
+                    marker.location.y + offsetY,
+                    marker.location.z + offsetZ
+                ))
+            }
+        }
+        
+        resetAutoCancel(player)
+        
+        return true
+    }
+    
+    private fun scheduleAutoCancel(player: Player) {
         var countdown = 10
         val task = Bukkit.getScheduler().runTaskTimer(MonolithLib.instance, Runnable {
             countdown--
@@ -93,6 +116,15 @@ object BuildSitePreviewManager {
         }, 20L, 20L)
         
         previewTasks[player.uniqueId] = task
+    }
+    
+    private fun resetAutoCancel(player: Player) {
+        val existingTask = previewTasks.remove(player.uniqueId)
+        existingTask?.cancel()
+        
+        if (hasActivePreview(player)) {
+            scheduleAutoCancel(player)
+        }
     }
     
     fun stopPreview(player: Player) {
@@ -140,22 +172,39 @@ class BuildSitePreview(
     val boundingBox: BoundingBox,
     val validationResult: ValidationResult,
     val facing: Facing,
-    val anchorLocation: Location
+    var anchorLocation: Location
 ) {
     companion object {
         private val legacy = LegacyComponentSerializer.legacySection()
     }
     
-    private val edgeDisplays = mutableListOf<BlockDisplay>()
-    private val cornerDisplays = mutableListOf<BlockDisplay>()
-    private val errorMarkerDisplays = mutableListOf<BlockDisplay>()
-    private var isActive = false
-    
+    var boxRenderer: SmoothBoundingBoxRenderer? = null
+    internal var errorMarkerDisplays = mutableListOf<BlockDisplay>()
+    var isActive: Boolean = false
+        private set
+
     fun show() {
         if (isActive) return
         isActive = true
         
-        createBoundingBoxEdges()
+        val color = if (validationResult.isValid) Color.RED else Color.fromRGB(255, 85, 85)
+        
+        boxRenderer = SmoothBoundingBoxRenderer(
+            plugin = MonolithLib.instance,
+            world = world,
+            initialColor = color,
+            thickness = 0.08f,
+            maxMoveRadius = 10.0,
+            interpolationTicks = 8,
+            cornerSize = 0.25f
+        )
+        
+        val boxData = SmoothBoundingBoxRenderer.BoundingBoxData.fromMinMax(
+            boundingBox.minX, boundingBox.minY, boundingBox.minZ,
+            boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ
+        )
+        boxRenderer!!.show(boxData)
+        
         createErrorMarkers()
     }
     
@@ -163,146 +212,13 @@ class BuildSitePreview(
         if (!isActive) return
         isActive = false
         
-        edgeDisplays.forEach { 
-            if (it.isValid) it.remove() 
-        }
-        cornerDisplays.forEach { 
-            if (it.isValid) it.remove() 
-        }
+        boxRenderer?.hide()
+        boxRenderer = null
+        
         errorMarkerDisplays.forEach { 
             if (it.isValid) it.remove() 
         }
-        
-        edgeDisplays.clear()
-        cornerDisplays.clear()
         errorMarkerDisplays.clear()
-    }
-    
-    private fun createBoundingBoxEdges() {
-        val box = boundingBox
-        val color = if (validationResult.isValid) Color.RED else Color.fromRGB(255, 85, 85)
-        val thickness = 0.1f
-        val maxSegmentLength = 80
-        
-        val edges = listOf(
-            Pair(Vector3i(box.minX, box.minY, box.minZ), Vector3i(box.maxX + 1, box.minY, box.minZ)),
-            Pair(Vector3i(box.minX, box.maxY + 1, box.minZ), Vector3i(box.maxX + 1, box.maxY + 1, box.minZ)),
-            Pair(Vector3i(box.minX, box.minY, box.maxZ + 1), Vector3i(box.maxX + 1, box.minY, box.maxZ + 1)),
-            Pair(Vector3i(box.minX, box.maxY + 1, box.maxZ + 1), Vector3i(box.maxX + 1, box.maxY + 1, box.maxZ + 1)),
-            
-            Pair(Vector3i(box.minX, box.minY, box.minZ), Vector3i(box.minX, box.maxY + 1, box.minZ)),
-            Pair(Vector3i(box.maxX + 1, box.minY, box.minZ), Vector3i(box.maxX + 1, box.maxY + 1, box.minZ)),
-            Pair(Vector3i(box.minX, box.minY, box.maxZ + 1), Vector3i(box.minX, box.maxY + 1, box.maxZ + 1)),
-            Pair(Vector3i(box.maxX + 1, box.minY, box.maxZ + 1), Vector3i(box.maxX + 1, box.maxY + 1, box.maxZ + 1)),
-            
-            Pair(Vector3i(box.minX, box.minY, box.minZ), Vector3i(box.minX, box.minY, box.maxZ + 1)),
-            Pair(Vector3i(box.maxX + 1, box.minY, box.minZ), Vector3i(box.maxX + 1, box.minY, box.maxZ + 1)),
-            Pair(Vector3i(box.minX, box.maxY + 1, box.minZ), Vector3i(box.minX, box.maxY + 1, box.maxZ + 1)),
-            Pair(Vector3i(box.maxX + 1, box.maxY + 1, box.minZ), Vector3i(box.maxX + 1, box.maxY + 1, box.maxZ + 1))
-        )
-        
-        for ((start, end) in edges) {
-            val dx = (end.x - start.x).toFloat()
-            val dy = (end.y - start.y).toFloat()
-            val dz = (end.z - start.z).toFloat()
-            val length = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
-            
-            if (length <= maxSegmentLength) {
-                createEdgeDisplay(start, end, color, thickness)
-            } else {
-                val segments = kotlin.math.ceil(length / maxSegmentLength).toInt()
-                for (i in 0 until segments) {
-                    val t0 = i.toFloat() / segments
-                    val t1 = (i + 1).toFloat() / segments
-                    
-                    val segStart = Vector3i(
-                        (start.x + (end.x - start.x) * t0).toInt(),
-                        (start.y + (end.y - start.y) * t0).toInt(),
-                        (start.z + (end.z - start.z) * t0).toInt()
-                    )
-                    val segEnd = Vector3i(
-                        (start.x + (end.x - start.x) * t1).toInt(),
-                        (start.y + (end.y - start.y) * t1).toInt(),
-                        (start.z + (end.z - start.z) * t1).toInt()
-                    )
-                    
-                    createEdgeDisplay(segStart, segEnd, color, thickness)
-                }
-            }
-        }
-        
-        val corners = listOf(
-            Vector3i(box.minX, box.minY, box.minZ),
-            Vector3i(box.maxX + 1, box.minY, box.minZ),
-            Vector3i(box.minX, box.maxY + 1, box.minZ),
-            Vector3i(box.maxX + 1, box.maxY + 1, box.minZ),
-            Vector3i(box.minX, box.minY, box.maxZ + 1),
-            Vector3i(box.maxX + 1, box.minY, box.maxZ + 1),
-            Vector3i(box.minX, box.maxY + 1, box.maxZ + 1),
-            Vector3i(box.maxX + 1, box.maxY + 1, box.maxZ + 1)
-        )
-        
-        for (corner in corners) {
-            createCornerDisplay(corner, color)
-        }
-    }
-    
-    private fun createEdgeDisplay(start: Vector3i, end: Vector3i, color: Color, thickness: Float) {
-        val dx = (end.x - start.x).toFloat()
-        val dy = (end.y - start.y).toFloat()
-        val dz = (end.z - start.z).toFloat()
-        
-        val length = kotlin.math.sqrt(dx * dx + dy * dy + dz * dz)
-        
-        if (length < 0.1f) return
-        
-        val location = Location(world, start.x.toDouble(), start.y.toDouble(), start.z.toDouble())
-        
-        try {
-            val display = world.spawn(location, BlockDisplay::class.java) { d ->
-                d.block = Bukkit.createBlockData(Material.RED_CONCRETE)
-                d.isGlowing = true
-                d.glowColorOverride = color
-                d.isPersistent = false
-                d.brightness = Display.Brightness(15, 15)
-                
-                val scaleX = if (dx != 0f) kotlin.math.abs(dx) else thickness
-                val scaleY = if (dy != 0f) kotlin.math.abs(dy) else thickness
-                val scaleZ = if (dz != 0f) kotlin.math.abs(dz) else thickness
-                
-                d.transformation = Transformation(
-                    Vector3f(0f, 0f, 0f),
-                    AxisAngle4f(),
-                    Vector3f(scaleX, scaleY, scaleZ),
-                    AxisAngle4f()
-                )
-            }
-            
-            edgeDisplays.add(display)
-        } catch (_: Exception) {}
-    }
-    
-    private fun createCornerDisplay(pos: Vector3i, color: Color) {
-        val location = Location(world, pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble())
-        
-        try {
-            val display = world.spawn(location, BlockDisplay::class.java) { d ->
-                d.block = Bukkit.createBlockData(Material.RED_CONCRETE)
-                d.isGlowing = true
-                d.glowColorOverride = color
-                d.isPersistent = false
-                d.brightness = Display.Brightness(15, 15)
-                
-                d.transformation = Transformation(
-                    Vector3f(-0.15f, -0.15f, -0.15f),
-                    AxisAngle4f(),
-                    Vector3f(0.3f, 0.3f, 0.3f),
-                    AxisAngle4f()
-                )
-            }
-            
-            cornerDisplays.add(display)
-        } catch (_: Exception) {}
     }
     
     private fun createErrorMarkers() {
@@ -328,7 +244,6 @@ class BuildSitePreview(
         try {
             val display = world.spawn(location, BlockDisplay::class.java) { d ->
                 d.block = Bukkit.createBlockData(if (color == Color.fromRGB(255, 0, 0)) Material.REDSTONE_BLOCK else Material.GOLD_BLOCK)
-                d.isGlowing = true
                 d.glowColorOverride = color
                 d.isPersistent = false
                 d.brightness = Display.Brightness(15, 15)

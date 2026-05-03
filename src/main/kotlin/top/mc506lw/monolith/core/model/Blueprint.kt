@@ -6,7 +6,8 @@ import top.mc506lw.monolith.core.math.Vector3i
 data class BlueprintMeta(
     val displayName: String = "",
     val description: String = "",
-    val controllerOffset: Vector3i = Vector3i.ZERO
+    val controllerOffset: Vector3i = Vector3i.ZERO,
+    val displayOffset: Vector3i = Vector3i.ZERO
 )
 
 class Blueprint(
@@ -105,6 +106,16 @@ class BlueprintBuilder(private val id: String) {
 
     fun controllerOffset(offset: Vector3i): BlueprintBuilder {
         this.meta = meta.copy(controllerOffset = offset)
+        return this
+    }
+
+    fun displayOffset(x: Int, y: Int, z: Int): BlueprintBuilder {
+        this.meta = meta.copy(displayOffset = Vector3i(x, y, z))
+        return this
+    }
+
+    fun displayOffset(offset: Vector3i): BlueprintBuilder {
+        this.meta = meta.copy(displayOffset = offset)
         return this
     }
 

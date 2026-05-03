@@ -19,7 +19,6 @@ item:
 
 message:
   prefix: "<gold>[MonolithLib]</gold>"
-  prefix_test: "<gray>[MLTest]</gray>"
 
   permission_denied: "<red>Permission denied!</red>"
   player_only: "<red>This command can only be executed by a player!</red>"
@@ -150,12 +149,12 @@ message:
     layer_out_of_range: "<red>Layer out of range</red>"
     current_layer: "<gray>Current layer: <white>%current%/%max%</white></gray>"
     current_position: "<gray>Current position: <white>%x%, %y%, %z%</white></gray>"
-    use_layer_command: "<gray>Use /mltest layer up/down to switch layers</gray>"
+    use_layer_command: "<gray>Use /ml preview layer up/down to switch layers</gray>"
     progress: "<gray>Progress: <white>%correct%/%total%</white> <green>%completed%</green></gray>"
     completed: "<green>Structure %structure_id% completed!</green>"
     controller_broken: "<red>Controller block has been destroyed, preview cancelled</red>"
     not_found: "<red>Structure not found: %structure_id%</red>"
-    start_preview: "<gray>Use /mltest preview <ID> to start a preview</gray>"
+    start_preview: "<gray>Use /ml preview show <ID> to start a preview</gray>"
     preview_will_expire: "<gray>Preview will disappear in 10 seconds</gray>"
     preview_cancelled: "<green>Preview cancelled</green>"
     preview_failed: "<red>Failed to create preview</red>"
@@ -199,29 +198,6 @@ message:
       step1: "<white>1. Point at a registered controller block</white>"
       step2: "<white>2. Type /ml preview to preview</white>"
       step3: "<white>3. Type /ml build to build</white>"
-    
-    test_help:
-      title: "<gold>[MonolithLib Test] Test commands:</gold>"
-      list: "<gray>/mltest list</gray> <white>- List all structures</white>"
-      info: "<gray>/mltest info <ID></gray> <white>- View structure details</white>"
-      preview: "<gray>/mltest preview <ID> [facing]</gray> <white>- Start preview at current position</white>"
-      layer: "<gray>/mltest layer [up|down|<layer>]</gray> <white>- Switch preview layer</white>"
-      slots: "<gray>/mltest slots <ID></gray> <white>- View structure slots</white>"
-      custom: "<gray>/mltest custom <ID></gray> <white>- View custom data</white>"
-      stop: "<gray>/mltest stop</gray> <white>- Stop all previews</white>"
-      preview_features: "<gray>Preview features:</gray>"
-      feature1: "<white>- Only shows ghost blocks within 7 blocks of player</white>"
-      feature2: "<white>- Only shows current layer, auto-switches when complete</white>"
-      feature3: "<white>- <green>Green</green>=correctly placed <red>Red</red>=missing</white>"
-      test_structures: "<gray>Test structures:</gray>"
-      test_simple: "<white>test_simple_3x3</white> <gray>- Simple 3x3 crafting table structure</gray>"
-      test_rebar: "<white>test_rebar_machine</white> <gray>- Rebar component machine</gray>"
-      test_loose: "<white>test_loose_furnace</white> <gray>- Loose matching furnace</gray>"
-      test_blocks: "<gray>Test blocks:</gray>"
-      block_test_controller: "<aqua>monolith:test_controller</aqua> <gray>- Crafting table texture</gray>"
-      block_furnace_core: "<aqua>monolith:furnace_core</aqua> <gray>- Furnace texture</gray>"
-      block_machine_core: "<aqua>monolith:machine_core</aqua> <gray>- Blast furnace texture</gray>"
-      block_custom_controller: "<aqua>monolith:custom_controller</aqua> <gray>- Lodestone texture (universal controller)</gray>"
     
     reload:
       starting: "<green>Reloading...</green>"
@@ -271,6 +247,14 @@ message:
     controller_must_be_rebar: "<gray>Controller must be a Rebar block with associated blueprint</gray>"
     build_cancelled: "<yellow>Build cancelled</yellow>"
     build_failed: "<red>Failed to start construction</red>"
+    
+    blueprint:
+      title: "<gold>[Blueprint] %id%</gold>"
+      given: "<green>Given blueprint: %id%</green>"
+      not_found: "<red>Blueprint not found: %id%</red>"
+      no_id: "<red>Please specify a blueprint ID</red>"
+      inventory_full: "<red>Inventory full, item dropped</red>"
+      hint: "<gray>Usage: /ml bp give <blueprint ID></gray>"
   
   test:
     controller_detected: "<gray>[MLTest] Detected test_controller -> test_simple_3x3</gray>"
@@ -301,6 +285,6 @@ message:
     registering_structure: "Registering structure: %id% (%size%, %count% non-air blocks)"
     loaded_structures: "Loaded %count% structures"
     test_module_init: "Initializing test module..."
-    test_module_complete: "Test module initialized! Use /mltest for commands"
+    test_module_complete: "Test module initialized! Use /ml for commands"
     test_structures_registered: "Registered %count% test structures"
     test_blocks_registered: "Registered %count% test Rebar blocks"

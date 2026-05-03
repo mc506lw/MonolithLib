@@ -42,6 +42,7 @@ interface PreviewFacade {
 interface BuildSiteFacade {
     fun createSite(player: Player, blueprint: Blueprint, location: Location, facing: Facing): top.mc506lw.monolith.feature.buildsite.BuildSite?
     fun getSite(location: Location): top.mc506lw.monolith.feature.buildsite.BuildSite?
+    fun getAllActiveSites(): List<top.mc506lw.monolith.feature.buildsite.BuildSite>
 }
 
 interface MonolithAPI {

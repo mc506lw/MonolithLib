@@ -19,7 +19,6 @@ item:
 
 message:
   prefix: "<gold>[MonolithLib]</gold>"
-  prefix_test: "<gray>[MLTest]</gray>"
   
   permission_denied: "<red>权限不足!</red>"
   player_only: "<red>此命令只能由玩家执行!</red>"
@@ -150,12 +149,12 @@ message:
     layer_out_of_range: "<red>层数超出范围</red>"
     current_layer: "<gray>当前层: <white>%current%/%max%</white></gray>"
     current_position: "<gray>当前位置: <white>%x%, %y%, %z%</white></gray>"
-    use_layer_command: "<gray>使用 /mltest layer up/down 切换层</gray>"
+    use_layer_command: "<gray>使用 /ml preview layer up/down 切换层</gray>"
     progress: "<gray>进度: <white>%correct%/%total%</white> <green>%completed%</green></gray>"
     completed: "<green>结构 %structure_id% 已完成!</green>"
     controller_broken: "<red>控制器方块已被破坏，预览已取消</red>"
     not_found: "<red>结构不存在: %structure_id%</red>"
-    start_preview: "<gray>使用 /mltest preview <ID> 启动预览</gray>"
+    start_preview: "<gray>使用 /ml preview show <ID> 启动预览</gray>"
     preview_will_expire: "<gray>预览将在10秒后自动消失</gray>"
     preview_cancelled: "<green>已取消预览</green>"
     preview_failed: "<red>预览创建失败</red>"
@@ -199,29 +198,6 @@ message:
       step1: "<white>1. 指向已注册的控制器方块</white>"
       step2: "<white>2. 输入 /ml preview 预览</white>"
       step3: "<white>3. 输入 /ml build 建造</white>"
-    
-    test_help:
-      title: "<gold>[MonolithLib Test] 测试命令:</gold>"
-      list: "<gray>/mltest list</gray> <white>- 列出所有结构</white>"
-      info: "<gray>/mltest info <ID></gray> <white>- 查看结构详情</white>"
-      preview: "<gray>/mltest preview <ID> [facing]</gray> <white>- 在当前位置启动预览</white>"
-      layer: "<gray>/mltest layer [up|down|<层数>]</gray> <white>- 切换预览层</white>"
-      slots: "<gray>/mltest slots <ID></gray> <white>- 查看结构槽位</white>"
-      custom: "<gray>/mltest custom <ID></gray> <white>- 查看自定义数据</white>"
-      stop: "<gray>/mltest stop</gray> <white>- 停止所有预览</white>"
-      preview_features: "<gray>预览模式特性:</gray>"
-      feature1: "<white>- 只显示玩家半径7格内的幽灵方块</white>"
-      feature2: "<white>- 只显示当前层，建完自动切换下一层</white>"
-      feature3: "<white>- <green>绿色</green>=已正确放置 <red>红色</red>=缺失</white>"
-      test_structures: "<gray>测试结构:</gray>"
-      test_simple: "<white>test_simple_3x3</white> <gray>- 简单3x3工作台结构</gray>"
-      test_rebar: "<white>test_rebar_machine</white> <gray>- Rebar组件机器</gray>"
-      test_loose: "<white>test_loose_furnace</white> <gray>- 宽松匹配熔炉</gray>"
-      test_blocks: "<gray>测试方块:</gray>"
-      block_test_controller: "<aqua>monolith:test_controller</aqua> <gray>- 工作台材质</gray>"
-      block_furnace_core: "<aqua>monolith:furnace_core</aqua> <gray>- 熔炉材质</gray>"
-      block_machine_core: "<aqua>monolith:machine_core</aqua> <gray>- 高炉材质</gray>"
-      block_custom_controller: "<aqua>monolith:custom_controller</aqua> <gray>- 磁石材质 (通用控制器)</gray>"
     
     reload:
       starting: "<green>正在重新加载...</green>"
@@ -271,6 +247,14 @@ message:
     controller_must_be_rebar: "<gray>控制器必须是 Rebar 方块且关联了蓝图</gray>"
     build_cancelled: "<yellow>已取消建造</yellow>"
     build_failed: "<red>建造启动失败</red>"
+    
+    blueprint:
+      title: "<gold>[蓝图] %id%</gold>"
+      given: "<green>已给予蓝图: %id%</green>"
+      not_found: "<red>未找到蓝图: %id%</red>"
+      no_id: "<red>请指定蓝图ID</red>"
+      inventory_full: "<red>背包已满，物品已掉落</red>"
+      hint: "<gray>用法: /ml bp give <蓝图ID></gray>"
   
   test:
     controller_detected: "<gray>[MLTest] 检测到 test_controller -> test_simple_3x3</gray>"
@@ -301,6 +285,6 @@ message:
     registering_structure: "注册结构: %id% (%size%, %count% 非空方块)"
     loaded_structures: "共加载 %count% 个结构"
     test_module_init: "初始化测试模块..."
-    test_module_complete: "测试模块初始化完成! 使用 /mltest 查看命令"
+    test_module_complete: "测试模块初始化完成! 使用 /ml 查看命令"
     test_structures_registered: "已注册 %count% 个测试结构"
     test_blocks_registered: "已注册 %count% 个测试 Rebar 方块"

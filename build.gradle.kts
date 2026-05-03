@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm") version "2.4.0-Beta1"
-    id("com.gradleup.shadow") version "8.3.0"
+    id("com.gradleup.shadow") version "8.3.2"
     id("xyz.jpenilla.run-paper") version "2.3.1"
 }
 
@@ -16,12 +16,17 @@ repositories {
     maven("https://repo.xenondevs.xyz/releases") {
         name = "InvUI"
     }
+    maven("https://repo.metamechanists.org/releases") {
+        name = "MetaMechanists Repository"
+    }
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("io.github.pylonmc:rebar:0.36.2")
     compileOnly("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation("org.metamechanists:DisplayModelLib:35")
+    shadow("org.metamechanists:DisplayModelLib:35")
 }
 
 tasks {

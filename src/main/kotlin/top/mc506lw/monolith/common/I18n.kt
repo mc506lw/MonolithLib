@@ -170,30 +170,6 @@ object I18n {
                 val step3 = translatable("message.command.help.step3")
             }
             
-            object TestHelp {
-                val title = translatable("message.command.test_help.title")
-                val list = translatable("message.command.test_help.list")
-                val info = translatable("message.command.test_help.info")
-                val preview = translatable("message.command.test_help.preview")
-                val layer = translatable("message.command.test_help.layer")
-                val slots = translatable("message.command.test_help.slots")
-                val custom = translatable("message.command.test_help.custom")
-                val stop = translatable("message.command.test_help.stop")
-                val previewFeatures = translatable("message.command.test_help.preview_features")
-                val feature1 = translatable("message.command.test_help.feature1")
-                val feature2 = translatable("message.command.test_help.feature2")
-                val feature3 = translatable("message.command.test_help.feature3")
-                val testStructures = translatable("message.command.test_help.test_structures")
-                val testSimple = translatable("message.command.test_help.test_simple")
-                val testRebar = translatable("message.command.test_help.test_rebar")
-                val testLoose = translatable("message.command.test_help.test_loose")
-                val testBlocks = translatable("message.command.test_help.test_blocks")
-                val blockTestController = translatable("message.command.test_help.block_test_controller")
-                val blockFurnaceCore = translatable("message.command.test_help.block_furnace_core")
-                val blockMachineCore = translatable("message.command.test_help.block_machine_core")
-                val blockCustomController = translatable("message.command.test_help.block_custom_controller")
-            }
-            
             object Reload {
                 val starting = translatable("message.command.reload.starting")
                 fun complete(count: Int) = translatable(

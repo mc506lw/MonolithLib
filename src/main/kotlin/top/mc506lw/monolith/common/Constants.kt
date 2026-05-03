@@ -26,6 +26,8 @@ object Constants {
         const val PREVIEW = "monolithlib.preview"
         const val BUILD = "monolithlib.build"
         const val BLUEPRINT = "monolithlib.blueprint"
+        const val SITE = "monolithlib.site"
+        const val EDIT = "monolithlib.edit"
         const val DEBUG = "monolithlib.debug"
     }
 }
