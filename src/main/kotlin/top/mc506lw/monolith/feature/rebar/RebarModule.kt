@@ -1,27 +1,30 @@
 package top.mc506lw.monolith.feature.rebar
 
 import org.bukkit.plugin.java.JavaPlugin
+import top.mc506lw.monolith.common.MonolithLogger
 
 class RebarModule(plugin: JavaPlugin) {
-    
+
+    private val logger = MonolithLogger.getLogger("Rebar")
+
     init {
         initializeRebarIntegration()
     }
-    
+
     private fun initializeRebarIntegration() {
         try {
             if (isAvailable()) {
-                println("[MonolithLib] Rebar 集成已启用")
+                logger.info { "Rebar integration enabled" }
             } else {
-                println("[MonolithLib] 未检测到 Rebar，跳过集成")
+                logger.warn { "Rebar not detected, skipping integration" }
             }
         } catch (e: NoClassDefFoundError) {
-            println("[MonolithLib] Rebar 未安装，跳过集成")
+            logger.warn { "Rebar not installed, skipping integration" }
         } catch (e: Exception) {
-            println("[MonolithLib] Rebar 初始化失败: ${e.message}")
+            logger.warn(e) { "Rebar initialization failed" }
         }
     }
-    
+
     fun isAvailable(): Boolean {
         return try {
             Class.forName("io.github.pylonmc.rebar.Rebar")

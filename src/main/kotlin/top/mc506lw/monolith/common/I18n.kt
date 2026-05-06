@@ -3,639 +3,511 @@ package top.mc506lw.monolith.common
 import io.github.pylonmc.rebar.i18n.RebarArgument
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.TranslatableComponent
-import top.mc506lw.rebar.MonolithLib
 
 object I18n {
-    
+
     private const val PREFIX = "monolithlib"
-    
+
     fun key(path: String): String = "$PREFIX.$path"
-    
+
     fun translatable(path: String): TranslatableComponent {
         return Component.translatable(key(path))
     }
-    
+
     fun translatable(path: String, vararg args: Pair<String, Any>): TranslatableComponent {
         val translationArgs = args.map { (name, value) ->
             RebarArgument.of(name, Component.text(value.toString()))
         }
         return Component.translatable(key(path), translationArgs)
     }
-    
+
     fun translatable(path: String, vararg args: RebarArgument): TranslatableComponent {
         return Component.translatable(key(path), args.toList())
     }
-    
+
     fun arg(name: String, value: Any): RebarArgument {
         return RebarArgument.of(name, Component.text(value.toString()))
     }
-    
+
     fun arg(name: String, component: Component): RebarArgument {
         return RebarArgument.of(name, component)
     }
-    
+
     object Message {
-        object Preview {
-            fun started(structureId: String, facing: String) = translatable(
-                "message.preview.started",
-                arg("structure_id", structureId),
-                arg("facing", facing)
-            )
-            
-            fun stopped(count: Int) = translatable(
-                "message.preview.stopped",
-                arg("count", count)
-            )
-            
-            val expired = translatable("message.preview.expired")
-            val noActive = translatable("message.preview.no_active")
-            
-            fun layerChanged(layer: Int) = translatable(
-                "message.preview.layer_changed",
-                arg("layer", layer)
-            )
-            
-            val layerUp = translatable("message.preview.layer_up")
-            val layerDown = translatable("message.preview.layer_down")
-            val layerTop = translatable("message.preview.layer_top")
-            val layerBottom = translatable("message.preview.layer_bottom")
-            
-            fun layerInvalid(layer: String) = translatable(
-                "message.preview.layer_invalid",
-                arg("layer", layer)
-            )
-            
-            val layerOutOfRange = translatable("message.preview.layer_out_of_range")
-            
-            fun currentLayer(current: Int, max: Int) = translatable(
-                "message.preview.current_layer",
-                arg("current", current),
-                arg("max", max)
-            )
-            
-            fun currentPosition(x: Int, y: Int, z: Int) = translatable(
-                "message.preview.current_position",
-                arg("x", x),
-                arg("y", y),
-                arg("z", z)
-            )
-            
-            val useLayerCommand = translatable("message.preview.use_layer_command")
-            
-            fun progress(correct: Int, total: Int, completed: String = "") = translatable(
-                "message.preview.progress",
-                arg("correct", correct),
-                arg("total", total),
-                arg("completed", completed)
-            )
-            
-            fun completed(structureId: String) = translatable(
-                "message.preview.completed",
-                arg("structure_id", structureId)
-            )
-            
-            val controllerBroken = translatable("message.preview.controller_broken")
-            
-            fun notFound(structureId: String) = translatable(
-                "message.preview.not_found",
-                arg("structure_id", structureId)
-            )
-            
-            val startPreview = translatable("message.preview.start_preview")
-            val previewWillExpire = translatable("message.preview.preview_will_expire")
-            val previewCancelled = translatable("message.preview.preview_cancelled")
-            val previewFailed = translatable("message.preview.preview_failed")
+
+        object Common {
+            val prefix = translatable("chat.common.prefix")
+            val errorPermissionDenied = translatable("chat.common.error_permission_denied")
+            val errorPlayerOnly = translatable("chat.common.error_player_only")
+            val errorInventoryFull = translatable("chat.common.error_inventory_full")
+            val hintTabComplete = translatable("chat.common.hint_tab_complete")
         }
-        
-        object Structure {
-            fun formed(structureId: String) = translatable(
-                "message.structure.formed",
-                arg("structure_id", structureId)
-            )
-            
-            fun broken(structureId: String) = translatable(
-                "message.structure.broken",
-                arg("structure_id", structureId)
-            )
-            
-            fun notFound(structureId: String) = translatable(
-                "message.structure.not_found",
-                arg("structure_id", structureId)
-            )
-            
-            val noBlocks = translatable("message.structure.no_blocks")
-            val addBlocksHint = translatable("message.structure.add_blocks_hint")
-            
-            fun controllerDetected(key: String) = translatable(
-                "message.structure.controller_detected",
-                arg("key", key)
-            )
-            
-            fun associatedStructure(structureId: String) = translatable(
-                "message.structure.associated_structure",
-                arg("structure_id", structureId)
-            )
-            
-            fun blockCount(count: Int) = translatable(
-                "message.structure.block_count",
-                arg("count", count)
-            )
-            
-            fun slots(slots: String) = translatable(
-                "message.structure.slots",
-                arg("slots", slots)
-            )
-            
-            fun customData(count: Int) = translatable(
-                "message.structure.custom_data",
-                arg("count", count)
-            )
-        }
-        
+
         object Command {
-            val permissionDenied = translatable("message.permission_denied")
-            val playerOnly = translatable("message.player_only")
-            
+
             object Help {
-                val title = translatable("message.command.help.title")
-                val reload = translatable("message.command.help.reload")
-                val list = translatable("message.command.help.list")
-                val info = translatable("message.command.help.info")
-                val preview = translatable("message.command.help.preview")
-                val build = translatable("message.command.help.build")
-                val blueprint = translatable("message.command.help.blueprint")
-                val usage = translatable("message.command.help.usage")
-                val step1 = translatable("message.command.help.step1")
-                val step2 = translatable("message.command.help.step2")
-                val step3 = translatable("message.command.help.step3")
+                val header = translatable("chat.command.help.header")
+                val title = translatable("chat.command.help.title")
+                val separator = translatable("chat.command.help.separator")
+                val footer = translatable("chat.command.help.footer")
+                val footerBlank = translatable("chat.command.help.footer_blank")
+
+                val sectionPreview = translatable("chat.command.help.section_preview")
+                val sectionPreviewArg = { arg: String, desc: String ->
+                    translatable("chat.command.help.section_preview_arg", arg("arg", arg), arg("desc", desc))
+                }
+                val sectionBuild = translatable("chat.command.help.section_build")
+                val sectionBp = translatable("chat.command.help.section_bp")
+                val sectionSite = translatable("chat.command.help.section_site")
+                val sectionEdit = translatable("chat.command.help.section_edit")
+                val sectionReload = translatable("chat.command.help.section_reload")
             }
-            
+
             object Reload {
-                val starting = translatable("message.command.reload.starting")
+                val starting = translatable("chat.command.reload_starting")
                 fun complete(count: Int) = translatable(
-                    "message.command.reload.complete",
-                    arg("count", count)
-                )
+                    "chat.command.reload_complete", arg("count", count))
             }
-            
+
             object List {
                 fun title(count: Int) = translatable(
-                    "message.command.list.title",
-                    arg("count", count)
-                )
-                val empty = translatable("message.command.list.empty")
+                    "chat.command.list_title", arg("count", count))
+                val entry = { id: String, size: String, blockCount: Int, rebarTag: String ->
+                    translatable("chat.command.list_entry",
+                        arg("id", id), arg("size", size), arg("block_count", blockCount), arg("rebar_tag", rebarTag))
+                }
+                val empty = translatable("chat.command.list_empty")
                 fun hint(path: String) = translatable(
-                    "message.command.list.hint",
-                    arg("path", path)
-                )
-                val formats = translatable("message.command.list.formats")
+                    "chat.command.list_hint", arg("path", path))
+                val formats = translatable("chat.command.list_formats")
             }
-            
-            object Files {
-                val title = translatable("message.command.files.title")
-                val imports = translatable("message.command.files.imports")
-                val blueprints = translatable("message.command.files.blueprints")
-                val products = translatable("message.command.files.products")
-                fun importsTitle(count: Int) = translatable(
-                    "message.command.files.imports_title",
-                    arg("count", count)
-                )
-                fun blueprintsTitle(count: Int) = translatable(
-                    "message.command.files.blueprints_title",
-                    arg("count", count)
-                )
-                fun productsTitle(count: Int) = translatable(
-                    "message.command.files.products_title",
-                    arg("count", count)
-                )
-                val statusReady = translatable("message.command.files.status_ready")
-                val statusPending = translatable("message.command.files.status_pending")
-                val statusMissing = translatable("message.command.files.status_missing")
-                fun moreFiles(count: Int) = translatable(
-                    "message.command.files.more_files",
-                    arg("count", count)
-                )
-                val noFiles = translatable("message.command.files.no_files")
-                val noFilesHint = translatable("message.command.files.no_files_hint")
-            }
-            
+
             object Info {
-                val title = translatable("message.command.info.title")
-                fun version(version: String) = translatable(
-                    "message.command.info.version",
-                    arg("version", version)
-                )
+                val title = translatable("chat.command.info_title")
+                fun version(v: String) = translatable("chat.command.info_version", arg("version", v))
                 fun registered(count: Int) = translatable(
-                    "message.command.info.registered",
-                    arg("count", count)
-                )
+                    "chat.command.info_registered", arg("count", count))
                 fun importDir(path: String) = translatable(
-                    "message.command.info.import_dir",
-                    arg("path", path)
-                )
+                    "chat.command.info_import_dir", arg("path", path))
                 fun blueprintDir(path: String) = translatable(
-                    "message.command.info.blueprint_dir",
-                    arg("path", path)
-                )
+                    "chat.command.info_blueprint_dir", arg("path", path))
                 fun productDir(path: String) = translatable(
-                    "message.command.info.product_dir",
-                    arg("path", path)
-                )
-                val formats = translatable("message.command.info.formats")
-                val rebarEnabled = translatable("message.command.info.rebar_enabled")
-                val rebarDisabled = translatable("message.command.info.rebar_disabled")
+                    "chat.command.info_product_dir", arg("path", path))
+                val formats = translatable("chat.command.info_formats")
+                val rebarEnabled = translatable("chat.command.info_rebar_enabled")
+                val rebarDisabled = translatable("chat.command.info_rebar_disabled")
                 fun rebarIntegration(status: Component) = translatable(
-                    "message.command.info.rebar_integration",
-                    arg("status", status)
-                )
-                fun blueprintNotFound(id: String) = translatable(
-                    "message.command.info.blueprint_not_found",
-                    arg("id", id)
-                )
-                fun blueprintTitle(id: String) = translatable(
-                    "message.command.info.blueprint_title",
-                    arg("id", id)
-                )
+                    "chat.command.info_rebar_integration", arg("status", status))
+                fun bpNotFound(id: String) = translatable(
+                    "chat.command.info_bp_not_found", arg("id", id))
+
+                fun bpTitle(id: String) = translatable(
+                    "chat.command.info_bp_title", arg("id", id))
                 fun size(x: Int, y: Int, z: Int) = translatable(
-                    "message.command.info.size",
-                    arg("x", x),
-                    arg("y", y),
-                    arg("z", z)
-                )
+                    "chat.command.info_bp_size", arg("x", x), arg("y", y), arg("z", z))
                 fun blockCount(count: Int) = translatable(
-                    "message.command.info.block_count",
-                    arg("count", count)
-                )
-                fun name(name: String) = translatable(
-                    "message.command.info.name",
-                    arg("name", name)
-                )
-                fun description(description: String) = translatable(
-                    "message.command.info.description",
-                    arg("description", description)
-                )
+                    "chat.command.info_bp_blocks", arg("count", count))
+                fun name(n: String) = translatable("chat.command.info_bp_name", arg("name", n))
+                fun description(d: String) = translatable("chat.command.info_bp_desc", arg("desc", d))
             }
-            
-            fun usage(usage: String) = translatable(
-                "message.command.usage",
-                arg("usage", usage)
-            )
-            val pointAtController = translatable("message.command.point_at_controller")
-            val controllerMustBeRebar = translatable("message.command.controller_must_be_rebar")
-            val buildCancelled = translatable("message.command.build_cancelled")
-            val buildFailed = translatable("message.command.build_failed")
-            
-            object Blueprint {
-                val title = translatable("message.command.blueprint.title")
-                fun given(id: String) = translatable(
-                    "message.command.blueprint.given",
-                    arg("id", id)
-                )
-                fun notFound(id: String) = translatable(
-                    "message.command.blueprint.not_found",
-                    arg("id", id)
-                )
-                val noId = translatable("message.command.blueprint.no_id")
-                val inventoryFull = translatable("message.command.blueprint.inventory_full")
-                val hint = translatable("message.command.blueprint.hint")
+
+            object Bp {
+                fun given(id: String) = translatable("chat.command.bp_given", arg("id", id))
+                fun notFound(id: String) = translatable("chat.command.bp_not_found", arg("id", id))
+                val noId = translatable("chat.command.bp_no_id")
+                val hint = translatable("chat.command.bp_hint")
             }
+
+            object ErrUsage {
+                val preview = translatable("chat.command.err_usage_preview")
+                val previewStop = translatable("chat.command.err_usage_preview_stop")
+                val build = translatable("chat.command.err_usage_build")
+                val buildHere = translatable("chat.command.err_usage_build_here")
+                val buildEasy = translatable("chat.command.err_usage_build_easy")
+                val buildPrinter = translatable("chat.command.err_usage_build_printer")
+                val bp = translatable("chat.command.err_usage_bp")
+                val bpList = translatable("chat.command.err_usage_bp_list")
+                val bpInfo = translatable("chat.command.err_usage_bp_info")
+                val bpGive = translatable("chat.command.err_usage_bp_give")
+                val site = translatable("chat.command.err_usage_site")
+                val siteList = translatable("chat.command.err_usage_site_list")
+                val siteInfo = translatable("chat.command.err_usage_site_info")
+                val siteCancel = translatable("chat.command.err_usage_site_cancel")
+                val edit = translatable("chat.command.err_usage_edit")
+                val editWand = translatable("chat.command.err_usage_edit_wand")
+                val editSave = translatable("chat.command.err_usage_edit_save")
+                val editMerge = translatable("chat.command.err_usage_edit_merge")
+            }
+
+            object ErrUnknown {
+                fun preview(arg: String) = translatable(
+                    "chat.command.err_unknown_subcmd_preview", arg("arg", arg))
+                val availablePreview = translatable("chat.command.err_available_preview")
+                fun build(arg: String) = translatable(
+                    "chat.command.err_unknown_subcmd_build", arg("arg", arg))
+                val availableBuild = translatable("chat.command.err_available_build")
+                fun bp(arg: String) = translatable(
+                    "chat.command.err_unknown_subcmd_bp", arg("arg", arg))
+                val availableBp = translatable("chat.command.err_available_bp")
+                fun site(arg: String) = translatable(
+                    "chat.command.err_unknown_subcmd_site", arg("arg", arg))
+                val availableSite = translatable("chat.command.err_available_site")
+                fun edit(arg: String) = translatable(
+                    "chat.command.err_unknown_subcmd_edit", arg("arg", arg))
+                val availableEdit = translatable("chat.command.err_available_edit")
+            }
+
+            fun blueprintNotFound(id: String) = translatable(
+                "chat.command.err_blueprint_not_found", arg("id", id))
+            val hintBpList = translatable("chat.command.err_hint_bp_list")
+            val errBuildFailed = translatable("chat.command.err_build_failed")
+
+            object Edit {
+                val noSelection = translatable("chat.command.edit_no_selection")
+                val saveDev = translatable("chat.command.edit_save_dev")
+                fun saveFailed(error: String) = translatable(
+                    "chat.command.edit_save_failed", arg("error", error))
+                val mergeDev = translatable("chat.command.edit_merge_dev")
+                fun mergeFailed(error: String) = translatable(
+                    "chat.command.edit_merge_failed", arg("error", error))
+                val wandGiven = translatable("chat.command.wand_given")
+                val wandHint = translatable("chat.command.wand_hint")
+            }
+
+            object Site {
+                fun listTitle(count: Int) = translatable(
+                    "chat.command.site.list_title", arg("count", count))
+                val stateBuilding = translatable("chat.command.site.list_entry_state_building")
+                val stateAwaiting = translatable("chat.command.site.list_entry_state_awaiting")
+                val stateVirtual = translatable("chat.command.site.list_entry_state_virtual")
+                fun entry(state: Component, blueprintId: String, x: Int, y: Int, z: Int) = translatable(
+                    "chat.command.site.list_entry",
+                    arg("state", state), arg("blueprint_id", blueprintId),
+                    arg("x", x), arg("y", y), arg("z", z))
+                val noneNearby = translatable("chat.command.site.list_none")
+                val errNoneNearby = translatable("chat.command.site.err_none_nearby")
+                val errNoneCancel = translatable("chat.command.site.err_none_cancel")
+                fun cancelled(blueprintId: String) = translatable(
+                    "chat.command.site.cancelled", arg("blueprint_id", blueprintId))
+
+                fun infoTitle(blueprintId: String) = translatable(
+                    "chat.command.site.info_title", arg("blueprint_id", blueprintId))
+                fun infoState(state: String) = translatable(
+                    "chat.command.site.info_state", arg("state", state))
+                fun infoPosition(x: Int, y: Int, z: Int) = translatable(
+                    "chat.command.site.info_position",
+                    arg("x", x), arg("y", y), arg("z", z))
+                fun infoFacing(facing: String) = translatable(
+                    "chat.command.site.info_facing", arg("facing", facing))
+                fun infoProgress(placed: Int, total: Int, percent: String) = translatable(
+                    "chat.command.site.info_progress",
+                    arg("placed", placed), arg("total", total), arg("percent", percent))
+                val infoCompleted = translatable("chat.command.site.info_completed")
+            }
+
+            val permissionDenied = Common.errorPermissionDenied
+            val playerOnly = Common.errorPlayerOnly
         }
-        
+
+        object BuildSite {
+            val previewCancelled = translatable("chat.build_site.preview_cancelled")
+            val errTargetNotAir = translatable("chat.build_site.err_target_not_air")
+            fun siteExists(id: String) = translatable(
+                "chat.build_site.err_site_exists", arg("blueprint_id", id))
+            val errBlueprintCorrupted = translatable("chat.build_site.err_blueprint_corrupted")
+            fun blueprintUnregistered(id: String) = translatable(
+                "chat.build_site.err_blueprint_unregistered", arg("blueprint_id", id))
+            val errPreviewCreateFail = translatable("chat.build_site.err_preview_create_fail")
+            val errValidationFailed = translatable("chat.build_site.err_validation_failed")
+            val hintFixIssues = translatable("chat.build_site.hint_fix_issues")
+            val errCreateFail = translatable("chat.build_site.err_create_fail")
+            val created = translatable("chat.build_site.created")
+            fun infoLine(blueprintId: String, facing: String) = translatable(
+                "chat.build_site.info_line",
+                arg("blueprint_id", blueprintId), arg("facing", facing))
+            fun layersInfo(total: Int, current: Int) = translatable(
+                "chat.build_site.layers_info",
+                arg("total", total), arg("current", current))
+            val hintCore = translatable("chat.build_site.hint_core")
+            fun existingBlocks(count: Int) = translatable(
+                "chat.build_site.existing_blocks", arg("count", count))
+            fun layerCompleted(layer: Int) = translatable(
+                "chat.build_site.layer_completed", arg("layer", layer))
+            val errWrongController = translatable("chat.build_site.err_wrong_controller")
+            fun controllerRequired(key: String) = translatable(
+                "chat.build_site.controller_required", arg("key", key))
+            val errPlaceControllerFirst = translatable("chat.build_site.err_place_controller_first")
+            val errCoreBlocked = translatable("chat.build_site.err_core_blocked")
+            val corePlacedValidating = translatable("chat.build_site.core_placed_validating")
+            fun errIncomplete(missing: Int) = translatable(
+                "chat.build_site.err_incomplete", arg("missing", missing))
+            fun completionRate(rate: Int) = translatable(
+                "chat.build_site.completion_rate", arg("rate", rate))
+            fun blocksNeedFix(count: Int) = translatable(
+                "chat.build_site.warn_blocks_need_fix", arg("count", count))
+            fun blocksFixed(count: Int) = translatable(
+                "chat.build_site.blocks_fixed", arg("count", count))
+            val activated = translatable("chat.build_site.activated")
+            val completeWaiting = translatable("chat.build_site.complete_waiting")
+            fun completedBroadcast(blueprintId: String, player: String) = translatable(
+                "chat.build_site.completed_broadcast",
+                arg("blueprint_id", blueprintId), arg("player", player))
+            val allLayersComplete = translatable("chat.build_site.all_layers_complete")
+            fun allLayersProgress(rate: Int, matched: Int, total: Int) = translatable(
+                "chat.build_site.all_layers_progress",
+                arg("rate", rate), arg("matched", matched), arg("total", total))
+            fun allLayersFix(count: Int) = translatable(
+                "chat.build_site.all_layers_fix", arg("count", count))
+            val shellDoneController = translatable("chat.build_site.shell_done_controller")
+            fun shellControllerKey(key: String) = translatable(
+                "chat.build_site.shell_controller_key", arg("key", key))
+            val shellCoreMarker = translatable("chat.build_site.shell_core_marker")
+            val shellDoneNoController = translatable("chat.build_site.shell_done_no_controller")
+            val cancelledReturned = translatable("chat.build_site.cancelled_returned")
+            fun cancelledBroadcast(blueprintId: String, player: String) = translatable(
+                "chat.build_site.cancelled_broadcast",
+                arg("blueprint_id", blueprintId), arg("player", player))
+            fun blockDestroyedRevert(layer: Int) = translatable(
+                "chat.build_site.block_destroyed_revert", arg("layer", layer))
+            val disassembled = translatable("chat.build_site.disassembled")
+            val errHasActivePreview = translatable("chat.build_site.err_has_active_preview")
+            val previewExpired = translatable("chat.build_site.preview_expired")
+            fun previewCountdown(countdown: Int) = translatable(
+                "chat.build_site.preview_countdown", arg("countdown", countdown))
+
+            val previewHeader = translatable("chat.build_site.preview_header")
+            fun previewBlueprint(id: String) = translatable(
+                "chat.build_site.preview_blueprint", arg("blueprint_id", id))
+            fun previewFacing(facing: String) = translatable(
+                "chat.build_site.preview_facing", arg("facing", facing))
+            fun previewSize(w: Int, h: Int, d: Int) = translatable(
+                "chat.build_site.preview_size",
+                arg("width", w), arg("height", h), arg("depth", d))
+            fun previewPosition(minX: Int, minY: Int, minZ: Int, maxX: Int, maxY: Int, maxZ: Int) =
+                translatable("chat.build_site.preview_position",
+                    arg("min_x", minX), arg("min_y", minY), arg("min_z", minZ),
+                    arg("max_x", maxX), arg("max_y", maxY), arg("max_z", maxZ))
+            val previewValid = translatable("chat.build_site.preview_valid")
+            fun previewErrors(count: Int) = translatable(
+                "chat.build_site.preview_errors", arg("count", count))
+            val previewWarnings = translatable("chat.build_site.preview_warnings")
+            val previewInstructions = translatable("chat.build_site.preview_instructions")
+            fun previewAutoCancel(seconds: Int) = translatable(
+                "chat.build_site.preview_auto_cancel", arg("seconds", seconds))
+            val previewFooter = translatable("chat.build_site.preview_footer")
+        }
+
+        object BuildMode {
+            val easybuildEnabled = translatable("chat.build_mode.easybuild_enabled")
+            val easybuildHint1 = translatable("chat.build_mode.easybuild_hint_1")
+            val easybuildHint2 = translatable("chat.build_mode.easybuild_hint_2")
+            val easybuildHint3 = translatable("chat.build_mode.easybuild_hint_3")
+            val easybuildDisabled = translatable("chat.build_mode.easybuild_disabled")
+            val printerEnabled = translatable("chat.build_mode.printer_enabled")
+            val printerHint1 = translatable("chat.build_mode.printer_hint_1")
+            val printerHint2 = translatable("chat.build_mode.printer_hint_2")
+            val printerHint3 = translatable("chat.build_mode.printer_hint_3")
+            val printerDisabled = translatable("chat.build_mode.printer_disabled")
+
+            val errNoSiteEasybuild = translatable("chat.build_mode.err_no_site_easybuild")
+            val errNoSitePrinter = translatable("chat.build_mode.err_no_site_printer")
+            fun errModeAutoDisabled(mode: String) = translatable(
+                "chat.build_mode.err_mode_auto_disabled", arg("mode", mode))
+            fun leftRangeCountdown(countdown: Int) = translatable(
+                "chat.build_mode.left_range_countdown", arg("countdown", countdown))
+            val usageLitematica = translatable("chat.build_mode.usage_litematica")
+
+            fun layerCompleted(layer: Int) = translatable(
+                "chat.build_mode.layer_completed", arg("layer", layer))
+            val allComplete = translatable("chat.build_mode.all_complete")
+            fun progress(rate: Int, matched: Int, total: Int) = translatable(
+                "chat.build_mode.progress",
+                arg("rate", rate), arg("matched", matched), arg("total", total))
+            fun needFix(count: Int) = translatable(
+                "chat.build_mode.need_fix", arg("count", count))
+            fun fixed(count: Int) = translatable("chat.build_mode.fixed", arg("count", count))
+            val shellComplete = translatable("chat.build_mode.shell_complete")
+            fun shellController(key: String) = translatable(
+                "chat.build_mode.shell_controller", arg("key", key))
+            val shellCompleteNoCore = translatable("chat.build_mode.shell_complete_no_core")
+        }
+
+        object Preview {
+            fun started(structureId: String, facing: String) = translatable(
+                "chat.preview.started",
+                arg("structure_id", structureId), arg("facing", facing))
+            fun stopped(count: Int) = translatable("chat.preview.stopped", arg("count", count))
+            val expired = translatable("chat.preview.expired")
+            val errNoActive = translatable("chat.preview.err_no_active")
+            fun layerChanged(layer: Int) = translatable(
+                "chat.preview.layer_changed", arg("layer", layer))
+            val layerUp = translatable("chat.preview.layer_up")
+            val layerDown = translatable("chat.preview.layer_down")
+            val errLayerTop = translatable("chat.preview.err_layer_top")
+            val errLayerBottom = translatable("chat.preview.err_layer_bottom")
+            fun errLayerInvalid(layer: String) = translatable(
+                "chat.preview.err_layer_invalid", arg("layer", layer))
+            val errLayerOutOfRange = translatable("chat.preview.err_layer_out_of_range")
+            fun currentLayer(current: Int, max: Int) = translatable(
+                "chat.preview.current_layer",
+                arg("current", current), arg("max", max))
+            fun currentPosition(x: Int, y: Int, z: Int) = translatable(
+                "chat.preview.current_position",
+                arg("x", x), arg("y", y), arg("z", z))
+            val hintLayerCommand = translatable("chat.preview.hint_layer_command")
+            fun progress(correct: Int, total: Int, completed: String) = translatable(
+                "chat.preview.progress",
+                arg("correct", correct), arg("total", total), arg("completed", completed))
+            fun completed(structureId: String) = translatable(
+                "chat.preview.completed", arg("structure_id", structureId))
+            val errControllerBroken = translatable("chat.preview.err_controller_broken")
+            fun notFound(structureId: String) = translatable(
+                "chat.preview.err_not_found", arg("structure_id", structureId))
+            val hintStartPreview = translatable("chat.preview.hint_start_preview")
+            val willExpire = translatable("chat.preview.will_expire")
+            val cancelled = translatable("chat.preview.cancelled")
+            val errCreateFailed = translatable("chat.preview.err_create_failed")
+
+            val summaryTitle = translatable("chat.preview.summary_title")
+            fun summaryBlueprint(id: String) = translatable(
+                "chat.preview.summary_blueprint", arg("blueprint_id", id))
+            fun summaryFacing(facing: String) = translatable(
+                "chat.preview.summary_facing", arg("facing", facing))
+            fun summaryRange(w: Int, h: Int, d: Int) = translatable(
+                "chat.preview.summary_range",
+                arg("width", w), arg("height", h), arg("depth", d))
+            fun summaryPosition(min: String, max: String) = translatable(
+                "chat.preview.summary_position",
+                arg("min", min), arg("max", max))
+            val summaryValid = translatable("chat.preview.summary_valid")
+            fun summaryErrors(count: Int) = translatable(
+                "chat.preview.summary_errors", arg("count", count))
+            fun summaryErrorItem(msg: String) = translatable(
+                "chat.preview.summary_error_item", arg("message", msg))
+            val summaryWarning = translatable("chat.preview.summary_warning")
+            fun summaryWarningItem(msg: String) = translatable(
+                "chat.preview.summary_warning_item", arg("message", msg))
+            val summaryConfirm = translatable("chat.preview.summary_confirm")
+            val summaryExpire = translatable("chat.preview.summary_expire")
+            val summaryFooter = translatable("chat.preview.summary_footer")
+            val timeoutCancelled = translatable("chat.preview.timeout_cancelled")
+            fun timeoutCountdown(countdown: Int) = translatable(
+                "chat.preview.timeout_countdown", arg("countdown", countdown))
+
+            fun errEmptyStage(id: String) = translatable(
+                "chat.preview.err_empty_stage", arg("id", id))
+            val buildFinished = translatable("chat.preview.build_finished")
+            val controllerBrokenCancel = translatable("chat.preview.controller_broken_cancel")
+            val timeoutAutoCancel = translatable("chat.preview.timeout_auto_cancel")
+            fun structureCompleted(id: String) = translatable(
+                "chat.preview.structure_completed", arg("id", id))
+            val structureCtrlBroken = translatable("chat.preview.structure_ctrl_broken")
+        }
+
+        object Builder {
+            val errWorldUnloaded = translatable("chat.builder.err_world_unloaded")
+            val errConflictingBlocks = translatable("chat.builder.err_conflicting_blocks")
+            fun conflictPositions(positions: String) = translatable(
+                "chat.builder.conflict_positions", arg("positions", positions))
+            fun moreConflicts(count: Int) = translatable(
+                "chat.builder.more_conflicts", arg("count", count))
+            val errInsufficientMaterials = translatable("chat.builder.err_insufficient_materials")
+            fun missingMaterial(material: String, count: Int) = translatable(
+                "chat.builder.missing_material",
+                arg("material", material), arg("count", count))
+            val errWorldUnloadedCancelled = translatable("chat.builder.err_world_unloaded_cancelled")
+            fun progress(placed: Int, total: Int, progress: String) = translatable(
+                "chat.builder.progress",
+                arg("placed", placed), arg("total", total), arg("progress", progress))
+            fun startBuild(blueprintId: String) = translatable(
+                "chat.builder.start_build", arg("blueprint_id", blueprintId))
+            fun buildInfo(count: Int) = translatable(
+                "chat.builder.build_info", arg("count", count))
+            val cancelled = translatable("chat.builder.cancelled")
+            val complete = translatable("chat.builder.complete")
+            fun structureInfo(blueprintId: String) = translatable(
+                "chat.builder.structure_info", arg("blueprint_id", blueprintId))
+        }
+
+        object Structure {
+            fun formed(structureId: String) = translatable(
+                "chat.structure.formed", arg("structure_id", structureId))
+            fun broken(structureId: String) = translatable(
+                "chat.structure.broken", arg("structure_id", structureId))
+            fun notFound(structureId: String) = translatable(
+                "chat.structure.err_not_found", arg("structure_id", structureId))
+            val warnNoBlocks = translatable("chat.structure.warn_no_blocks")
+            val hintAddBlocks = translatable("chat.structure.hint_add_blocks")
+            fun controllerDetected(key: String) = translatable(
+                "chat.structure.controller_detected", arg("key", key))
+            fun associatedStructure(structureId: String) = translatable(
+                "chat.structure.associated_structure", arg("structure_id", structureId))
+            fun blockCount(count: Int) = translatable(
+                "chat.structure.block_count", arg("count", count))
+            fun slots(slots: String) = translatable(
+                "chat.structure.slots", arg("slots", slots))
+            fun customData(count: Int) = translatable(
+                "chat.structure.custom_data", arg("count", count))
+        }
+
+        object BlueprintTable {
+            val craftSuccess = translatable("chat.blueprint_table.craft_success")
+            val guiTitle = translatable("chat.blueprint_table.gui_title")
+        }
+
         object Test {
-            val controllerDetected = translatable("message.test.controller_detected")
-            val furnaceDetected = translatable("message.test.furnace_detected")
-            val machineDetected = translatable("message.test.machine_detected")
-            val rebarRequired = translatable("message.test.rebar_required")
-            val customDetected = translatable("message.test.custom_detected")
-            val customHint = translatable("message.test.custom_hint")
+            val controllerDetected = translatable("chat.test.controller_detected")
+            val furnaceDetected = translatable("chat.test.furnace_detected")
+            val machineDetected = translatable("chat.test.machine_detected")
+            val rebarRequired = translatable("chat.test.rebar_required")
+            val customDetected = translatable("chat.test.custom_detected")
+            val customHint = translatable("chat.test.custom_hint")
             fun previewStarted(structureId: String) = translatable(
-                "message.test.preview_started",
-                arg("structure_id", structureId)
-            )
+                "chat.test.preview_started", arg("structure_id", structureId))
         }
-        
+
         object Rebar {
-            val integrationEnabled = translatable("message.rebar.integration_enabled")
-            val integrationDisabled = translatable("message.rebar.integration_disabled")
+            val integrationEnabled = translatable("chat.rebar.integration_enabled")
+            val integrationDisabled = translatable("chat.rebar.integration_disabled")
             fun integrationFailed(error: String) = translatable(
-                "message.rebar.integration_failed",
-                arg("error", error)
-            )
+                "chat.rebar.err_integration_failed", arg("error", error))
         }
-        
+
         object Io {
             fun importedBlueprint(name: String, count: Int) = translatable(
-                "message.io.imported_blueprint",
-                arg("name", name),
-                arg("count", count)
-            )
+                "chat.io.imported",
+                arg("name", name), arg("count", count))
             fun rebuiltProduct(name: String) = translatable(
-                "message.io.rebuilt_product",
-                arg("name", name)
-            )
+                "chat.io.rebuilt", arg("name", name))
             fun loadedStandalone(name: String) = translatable(
-                "message.io.loaded_standalone",
-                arg("name", name)
-            )
+                "chat.io.loaded_standalone", arg("name", name))
             fun loadFailed(file: String, error: String) = translatable(
-                "message.io.load_failed",
-                arg("file", file),
-                arg("error", error)
-            )
+                "chat.io.err_load_failed",
+                arg("file", file), arg("error", error))
             fun saveFailed(file: String, error: String) = translatable(
-                "message.io.save_failed",
-                arg("file", file),
-                arg("error", error)
-            )
+                "chat.io.err_save_failed",
+                arg("file", file), arg("error", error))
         }
-        
+
         object Init {
-            val starting = translatable("message.init.starting")
+            val starting = translatable("chat.init.starting")
             fun complete(version: String) = translatable(
-                "message.init.complete",
-                arg("version", version)
-            )
-            val shuttingDown = translatable("message.init.shutting_down")
-            val shutdownComplete = translatable("message.init.shutdown_complete")
+                "chat.init.complete", arg("version", version))
+            val shuttingDown = translatable("chat.init.shutting_down")
+            val shutdownComplete = translatable("chat.init.shutdown_complete")
             fun registeringStructure(id: String, size: String, count: Int) = translatable(
-                "message.init.registering_structure",
-                arg("id", id),
-                arg("size", size),
-                arg("count", count)
-            )
+                "chat.init.registering",
+                arg("id", id), arg("size", size), arg("count", count))
             fun loadedStructures(count: Int) = translatable(
-                "message.init.loaded_structures",
-                arg("count", count)
-            )
-            val testModuleInit = translatable("message.init.test_module_init")
-            val testModuleComplete = translatable("message.init.test_module_complete")
+                "chat.init.loaded_total", arg("count", count))
+            val testModuleInit = translatable("chat.init.test_module_init")
+            val testModuleComplete = translatable("chat.init.test_module_complete")
             fun testStructuresRegistered(count: Int) = translatable(
-                "message.init.test_structures_registered",
-                arg("count", count)
-            )
+                "chat.init.test_structures", arg("count", count))
             fun testBlocksRegistered(count: Int) = translatable(
-                "message.init.test_blocks_registered",
-                arg("count", count)
-            )
-        }
-        
-        object BuildSite {
-            val previewCancelled = translatable("message.buildsite.preview_cancelled")
-            val targetNotAir = translatable("message.buildsite.target_not_air")
-            fun siteExists(blueprintId: String) = translatable(
-                "message.buildsite.site_exists",
-                arg("blueprint_id", blueprintId)
-            )
-            val blueprintCorrupted = translatable("message.buildsite.blueprint_corrupted")
-            fun blueprintNotRegistered(blueprintId: String) = translatable(
-                "message.buildsite.blueprint_not_registered",
-                arg("blueprint_id", blueprintId)
-            )
-            val previewFailed = translatable("message.buildsite.preview_failed")
-            val validationFailed = translatable("message.buildsite.validation_failed")
-            val fixIssues = translatable("message.buildsite.fix_issues")
-            val siteCreateFailed = translatable("message.buildsite.site_create_failed")
-            val siteCreated = translatable("message.buildsite.site_created")
-            fun siteInfo(blueprintId: String, facing: String) = translatable(
-                "message.buildsite.site_info",
-                arg("blueprint_id", blueprintId),
-                arg("facing", facing)
-            )
-            fun siteLayers(total: Int, current: Int) = translatable(
-                "message.buildsite.site_layers",
-                arg("total", total),
-                arg("current", current)
-            )
-            val siteCoreHint = translatable("message.buildsite.site_core_hint")
-            fun existingBlocks(count: Int) = translatable(
-                "message.buildsite.existing_blocks",
-                arg("count", count)
-            )
-            fun layerCompleted(layer: Int) = translatable(
-                "message.buildsite.layer_completed",
-                arg("layer", layer)
-            )
-            val placeCorrectController = translatable("message.buildsite.place_correct_controller")
-            fun controllerRequired(key: String) = translatable(
-                "message.buildsite.controller_required",
-                arg("key", key)
-            )
-            val placeControllerFirst = translatable("message.buildsite.place_controller_first")
-            val coreCannotPlace = translatable("message.buildsite.core_cannot_place")
-            val corePlacedValidating = translatable("message.buildsite.core_placed_validating")
-            fun structureIncomplete(missing: Int) = translatable(
-                "message.buildsite.structure_incomplete",
-                arg("missing", missing)
-            )
-            fun completionRate(rate: Int) = translatable(
-                "message.buildsite.completion_rate",
-                arg("rate", rate)
-            )
-            fun blocksNeedFix(count: Int) = translatable(
-                "message.buildsite.blocks_need_fix",
-                arg("count", count)
-            )
-            fun blocksFixed(count: Int) = translatable(
-                "message.buildsite.blocks_fixed",
-                arg("count", count)
-            )
-            val structureActivated = translatable("message.buildsite.structure_activated")
-            val structureCompleteWaiting = translatable("message.buildsite.structure_complete_waiting")
-            fun siteCompletedBroadcast(blueprintId: String, player: String) = translatable(
-                "message.buildsite.site_completed_broadcast",
-                arg("blueprint_id", blueprintId),
-                arg("player", player)
-            )
-            val allLayersComplete = translatable("message.buildsite.all_layers_complete")
-            fun allLayersProgress(rate: Int, matched: Int, total: Int) = translatable(
-                "message.buildsite.all_layers_progress",
-                arg("rate", rate),
-                arg("matched", matched),
-                arg("total", total)
-            )
-            fun allLayersFix(count: Int) = translatable(
-                "message.buildsite.all_layers_fix",
-                arg("count", count)
-            )
-            val shellCompleteController = translatable("message.buildsite.shell_complete_controller")
-            fun shellControllerKey(key: String) = translatable(
-                "message.buildsite.shell_controller_key",
-                arg("key", key)
-            )
-            val shellCoreMarker = translatable("message.buildsite.shell_core_marker")
-            val shellCompleteNoController = translatable("message.buildsite.shell_complete_no_controller")
-            val siteCancelled = translatable("message.buildsite.site_cancelled")
-            fun siteCancelledBroadcast(blueprintId: String, player: String) = translatable(
-                "message.buildsite.site_cancelled_broadcast",
-                arg("blueprint_id", blueprintId),
-                arg("player", player)
-            )
-            fun buildBlockDestroyed(layer: Int) = translatable(
-                "message.buildsite.build_block_destroyed",
-                arg("layer", layer)
-            )
-            val structureDisassembled = translatable("message.buildsite.structure_disassembled")
-            val hasActivePreviewBlockMode = translatable("message.buildsite.has_active_preview_block_mode")
-            val previewExpired = translatable("message.buildsite.preview_expired")
-            fun previewCountdown(countdown: Int) = translatable(
-                "message.buildsite.preview_countdown",
-                arg("countdown", countdown)
-            )
-            val previewHeader = translatable("message.buildsite.preview_header")
-            fun previewBlueprint(blueprintId: String) = translatable(
-                "message.buildsite.preview_blueprint",
-                arg("blueprint_id", blueprintId)
-            )
-            fun previewFacing(facing: String) = translatable(
-                "message.buildsite.preview_facing",
-                arg("facing", facing)
-            )
-            fun previewSize(width: Int, height: Int, depth: Int) = translatable(
-                "message.buildsite.preview_size",
-                arg("width", width),
-                arg("height", height),
-                arg("depth", depth)
-            )
-            fun previewPosition(minX: Int, minY: Int, minZ: Int, maxX: Int, maxY: Int, maxZ: Int) = translatable(
-                "message.buildsite.preview_position",
-                arg("min_x", minX),
-                arg("min_y", minY),
-                arg("min_z", minZ),
-                arg("max_x", maxX),
-                arg("max_y", maxY),
-                arg("max_z", maxZ)
-            )
-            val previewValid = translatable("message.buildsite.preview_valid")
-            fun previewErrors(count: Int) = translatable(
-                "message.buildsite.preview_errors",
-                arg("count", count)
-            )
-            val previewWarnings = translatable("message.buildsite.preview_warnings")
-            val previewInstructions = translatable("message.buildsite.preview_instructions")
-            fun previewAutoCancel(seconds: Int) = translatable(
-                "message.buildsite.preview_auto_cancel",
-                arg("seconds", seconds)
-            )
-            val previewFooter = translatable("message.buildsite.preview_footer")
-        }
-        
-        object EasyBuild {
-            fun layerCompleted(layer: Int) = translatable(
-                "message.easybuild.layer_completed",
-                arg("layer", layer)
-            )
-            val allComplete = translatable("message.easybuild.all_complete")
-            fun progress(rate: Int, matched: Int, total: Int) = translatable(
-                "message.easybuild.progress",
-                arg("rate", rate),
-                arg("matched", matched),
-                arg("total", total)
-            )
-            fun needFix(count: Int) = translatable(
-                "message.easybuild.need_fix",
-                arg("count", count)
-            )
-            fun fixed(count: Int) = translatable(
-                "message.easybuild.fixed",
-                arg("count", count)
-            )
-            val shellComplete = translatable("message.easybuild.shell_complete")
-            fun shellController(key: String) = translatable(
-                "message.easybuild.shell_controller",
-                arg("key", key)
-            )
-            val shellCompleteNoCore = translatable("message.easybuild.shell_complete_no_core")
-        }
-        
-        object Printer {
-            fun layerCompleted(layer: Int) = translatable(
-                "message.printer.layer_completed",
-                arg("layer", layer)
-            )
-            val allComplete = translatable("message.printer.all_complete")
-            fun progress(rate: Int, matched: Int, total: Int) = translatable(
-                "message.printer.progress",
-                arg("rate", rate),
-                arg("matched", matched),
-                arg("total", total)
-            )
-            fun needFix(count: Int) = translatable(
-                "message.printer.need_fix",
-                arg("count", count)
-            )
-            fun fixed(count: Int) = translatable(
-                "message.printer.fixed",
-                arg("count", count)
-            )
-            val shellComplete = translatable("message.printer.shell_complete")
-            fun shellController(key: String) = translatable(
-                "message.printer.shell_controller",
-                arg("key", key)
-            )
-            val shellCompleteNoCore = translatable("message.printer.shell_complete_no_core")
-        }
-        
-        object Litematica {
-            fun modeAutoDisabled(modes: String) = translatable(
-                "message.litematica.mode_auto_disabled",
-                arg("modes", modes)
-            )
-            fun leftRangeCountdown(countdown: Int) = translatable(
-                "message.litematica.left_range_countdown",
-                arg("countdown", countdown)
-            )
-            val easybuildEnabled = translatable("message.litematica.easybuild_enabled")
-            val easybuildDisabled = translatable("message.litematica.easybuild_disabled")
-            val noSiteNearby = translatable("message.litematica.no_site_nearby")
-            val printerEnabled = translatable("message.litematica.printer_enabled")
-            val printerDisabled = translatable("message.litematica.printer_disabled")
-            val printerNoSite = translatable("message.litematica.printer_no_site")
-            val usage = translatable("message.litematica.usage")
-        }
-        
-        object BlueprintTable {
-            val craftSuccess = translatable("message.blueprint_table.craft_success")
-            val guiTitle = translatable("message.blueprint_table.gui_title")
-        }
-        
-        object Builder {
-            val worldUnloaded = translatable("message.builder.world_unloaded")
-            val conflictingBlocks = translatable("message.builder.conflicting_blocks")
-            fun conflictPositions(positions: String) = translatable(
-                "message.builder.conflict_positions",
-                arg("positions", positions)
-            )
-            fun moreConflicts(count: Int) = translatable(
-                "message.builder.more_conflicts",
-                arg("count", count)
-            )
-            val insufficientMaterials = translatable("message.builder.insufficient_materials")
-            fun missingMaterial(material: String, count: Int) = translatable(
-                "message.builder.missing_material",
-                arg("material", material),
-                arg("count", count)
-            )
-            val worldUnloadedCancelled = translatable("message.builder.world_unloaded_cancelled")
-            fun buildProgress(placed: Int, total: Int, progress: String) = translatable(
-                "message.builder.build_progress",
-                arg("placed", placed),
-                arg("total", total),
-                arg("progress", progress)
-            )
-            fun startBuild(blueprintId: String) = translatable(
-                "message.builder.start_build",
-                arg("blueprint_id", blueprintId)
-            )
-            fun buildInfo(count: Int) = translatable(
-                "message.builder.build_info",
-                arg("count", count)
-            )
-            val buildCancelled = translatable("message.builder.build_cancelled")
-            val buildComplete = translatable("message.builder.build_complete")
-            fun structureInfo(blueprintId: String) = translatable(
-                "message.builder.structure_info",
-                arg("blueprint_id", blueprintId)
-            )
+                "chat.init.test_blocks", arg("count", count))
+            fun restoredSites(count: Int) = translatable(
+                "chat.init.restored_sites", arg("count", count))
         }
     }
 }

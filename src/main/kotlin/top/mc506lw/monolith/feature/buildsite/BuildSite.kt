@@ -17,6 +17,7 @@ import org.bukkit.util.Transformation
 import org.joml.AxisAngle4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import top.mc506lw.monolith.common.I18n
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.model.Shape
@@ -48,10 +49,12 @@ object BlueprintItem {
         val item = ItemStack(Material.PAPER)
         val meta = item.itemMeta ?: return item
 
-        meta.displayName(net.kyori.adventure.text.Component.text("\u00a7b蓝图: \u00a7f$blueprintId"))
+        meta.displayName(
+            Component.text("蓝图: ", NamedTextColor.AQUA).append(Component.text(blueprintId, NamedTextColor.WHITE))
+        )
         meta.lore(listOf(
-            net.kyori.adventure.text.Component.text("\u00a77右键放置以创建工地"),
-            net.kyori.adventure.text.Component.text("\u00a77蓝图ID: \u00a7e$blueprintId")
+            Component.text("右键放置以创建工地", NamedTextColor.GRAY),
+            Component.text("蓝图ID: ", NamedTextColor.GRAY).append(Component.text(blueprintId, NamedTextColor.YELLOW))
         ))
 
         meta.persistentDataContainer.set(BLUEPRINT_KEY, PersistentDataType.STRING, blueprintId)
@@ -908,13 +911,13 @@ class BuildSite(
 
         if (allLayersDone) {
             enterAwaitingCore()
-            player?.sendMessage("§e[MonolithLib] §f所有层已完整，请放置核心控制器")
+            player?.sendMessage(I18n.translatable("chat.build_site.all_layers_complete_hint"))
         } else {
             val advanced = advanceToNextIncompleteLayer()
             if (advanced > 0) {
-                player?.sendMessage("§e[MonolithLib] §f结构已解体，重新进入建造模式 (当前层: ${currentLayer + 1})")
+                player?.sendMessage(I18n.translatable("chat.build_site.structure_disassembled_retry", I18n.arg("layer", currentLayer + 1)))
             } else {
-                player?.sendMessage("§e[MonolithLib] §f结构已解体，重新进入建造模式")
+                player?.sendMessage(I18n.translatable("chat.build_site.structure_disassembled_retry_no_layer"))
             }
         }
 

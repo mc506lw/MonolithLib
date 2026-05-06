@@ -54,7 +54,7 @@ class BuildSiteListener : Listener {
             BuildSiteState.AWAITING_CORE -> handlePlaceInAwaitingCore(site, placedPos, placedBlock, player, event)
             BuildSiteState.VIRTUAL -> {
                 event.isCancelled = true
-                player.sendMessage("\u00a7c[MonolithLib] \u865a\u62df\u673a\u5668\u533a\u57df\u7981\u6b62\u653e\u7f6e\u65b9\u5757")
+                player.sendMessage(I18n.translatable("chat.build_site.err_vm_zone_block"))
             }
         }
     }
@@ -136,7 +136,7 @@ class BuildSiteListener : Listener {
     fun onPlayerItemHeld(event: PlayerItemHeldEvent) {
         val player = event.player
         if (BuildSitePreviewManager.hasActivePreview(player)) {
-            player.sendMessage("§e[MonolithLib] §f切换物品栏，预览已取消")
+            player.sendMessage(I18n.translatable("chat.build_site.preview_cancelled_hotbar"))
             BuildSitePreviewManager.stopPreview(player)
             pendingConfirmations.remove(player.uniqueId)
         }
@@ -167,7 +167,7 @@ class BuildSiteListener : Listener {
         
         for (site in BuildSiteManager.getAllActiveSites()) {
             if (site.containsPosition(Vector3i(targetLocation.blockX, targetLocation.blockY, targetLocation.blockZ))) {
-                player.sendMessage("§c[MonolithLib] 该位置已在工地范围内")
+                player.sendMessage(I18n.translatable("chat.build_site.err_position_in_site"))
                 return
             }
         }
@@ -202,8 +202,8 @@ class BuildSiteListener : Listener {
             val moved = BuildSitePreviewManager.movePreviewTo(player, targetLocation)
             if (moved) {
                 player.sendMessage("")
-                player.sendMessage("§a§l[MonolithLib] §f预览已移动到新位置")
-                player.sendMessage("§a§l[MonolithLib] §f再次右键同一位置 §e确认创建§f 工地")
+                player.sendMessage(I18n.translatable("chat.build_site.preview_moved"))
+                player.sendMessage(I18n.translatable("chat.build_site.preview_confirm_hint"))
                 
                 pendingConfirmations[player.uniqueId] = PendingConfirmation(
                     blueprintId = blueprintId,
@@ -226,8 +226,8 @@ class BuildSiteListener : Listener {
         }
 
         player.sendMessage("")
-        player.sendMessage("§a§l[MonolithLib] §f再次右键同一位置 §e确认创建§f 工地")
-        player.sendMessage("§7(30秒内有效，移动或滚动离开较远会取消)")
+        player.sendMessage(I18n.translatable("chat.build_site.preview_confirm_hint"))
+        player.sendMessage(I18n.translatable("chat.build_site.preview_timeout_hint"))
 
         pendingConfirmations[player.uniqueId] = PendingConfirmation(
             blueprintId = blueprintId,

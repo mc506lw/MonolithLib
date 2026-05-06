@@ -8,6 +8,7 @@ import org.bukkit.block.Block
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.scheduler.BukkitTask
+import top.mc506lw.monolith.common.I18n
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.feature.preview.SmoothBoundingBoxRenderer
 import top.mc506lw.rebar.MonolithLib
@@ -78,13 +79,13 @@ object SelectionManager {
         selection.pos1 = Vector3i(block.x, block.y, block.z)
         selection.worldName = block.world.name
         
-        player.sendMessage("\u00a7a[MonolithLib] Pos1 \u00a7fset to (${block.x}, ${block.y}, ${block.z})")
-        
+        player.sendMessage(I18n.translatable("chat.selection.pos1_set", "x" to block.x, "y" to block.y, "z" to block.z))
+
         if (selection.isComplete) {
             val vol = selection.getVolume()
-            player.sendMessage("\u00a77[MonolithLib] 选区已完整: ${vol} 个方块")
+            player.sendMessage(I18n.translatable("chat.selection.complete", "count" to vol))
         } else {
-            player.sendMessage("\u00a77[MonolithLib] 请右键设置 Pos2")
+            player.sendMessage(I18n.translatable("chat.selection.hint_pos2"))
         }
         
         showSelectionParticles(player)
@@ -96,23 +97,23 @@ object SelectionManager {
         val selection = getSelection(player)
         
         if (selection.pos1 == null || selection.worldName == null) {
-            player.sendMessage("\u00a7c[MonolithLib] 请先左键设置 Pos1!")
+            player.sendMessage(I18n.translatable("chat.selection.err_no_pos1"))
             return false
         }
         
         if (block.world.name != selection.worldName) {
-            player.sendMessage("\u00a7c[MonolithLib] Pos1 和 Pos2 必须在同一世界!")
+            player.sendMessage(I18n.translatable("chat.selection.err_different_world"))
             return false
         }
         
         selection.pos2 = Vector3i(block.x, block.y, block.z)
         
-        player.sendMessage("\u00a7a[MonolithLib] Pos2 \u00a7fset to (${block.x}, ${block.y}, ${block.z})")
+        player.sendMessage(I18n.translatable("chat.selection.pos2_set", "x" to block.x, "y" to block.y, "z" to block.z))
         
         if (selection.isComplete) {
             val vol = selection.getVolume()
-            player.sendMessage("\u00a77[MonolithLib] 选区已完整: ${vol} 个方块")
-            player.sendMessage("\u00a77[MonolithLib] 使用 /ml save <名称> 保存为 .raw.mnb")
+            player.sendMessage(I18n.translatable("chat.selection.complete", "count" to vol))
+            player.sendMessage(I18n.translatable("chat.selection.hint_save"))
         }
         
         showSelectionParticles(player)

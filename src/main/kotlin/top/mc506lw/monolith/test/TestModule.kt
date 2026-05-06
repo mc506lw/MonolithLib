@@ -3,6 +3,7 @@ package top.mc506lw.monolith.test
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import top.mc506lw.monolith.api.MonolithAPI
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.core.model.BlockEntry
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.model.BlueprintMeta
@@ -15,11 +16,13 @@ import top.mc506lw.monolith.test.blocks.FurnaceCoreBlock
 
 object TestModule {
 
+    private val logger = MonolithLogger.getLogger("Test")
+
     fun init() {
-        println("[MonolithLib] 初始化示例蓝图和测试方块...")
+        logger.debug { "Initializing example blueprints and test blocks..." }
         TestBlocks.registerAll()
         registerExampleBlueprints()
-        println("[MonolithLib] 示例模块初始化完成!")
+        logger.info { "Test module initialized successfully" }
     }
 
     private fun registerExampleBlueprints() {
@@ -117,6 +120,6 @@ object TestModule {
 
         api.registry.register(looseBlueprint)
 
-        println("[MonolithLib] 已注册 3 个示例蓝图")
+        logger.debug { "Registered 3 example blueprints" }
     }
 }

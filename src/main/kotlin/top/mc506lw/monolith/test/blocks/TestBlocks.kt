@@ -15,6 +15,7 @@ import org.bukkit.block.Block
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataContainer
 import top.mc506lw.monolith.api.MonolithAPI
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.transform.Facing
 import top.mc506lw.monolith.integration.BlueprintMultiblockAdapter
@@ -22,13 +23,15 @@ import top.mc506lw.rebar.MonolithLib
 
 object TestBlocks {
 
+    private val logger = MonolithLogger.getLogger("TestBlocks")
+
     fun registerAll() {
         registerBlockWithItem(TestControllerBlock.KEY, TestControllerBlock.MATERIAL, TestControllerBlock::class.java)
         registerBlockWithItem(FurnaceCoreBlock.KEY, FurnaceCoreBlock.MATERIAL, FurnaceCoreBlock::class.java)
         registerBlockWithItem(MachineCoreBlock.KEY, MachineCoreBlock.MATERIAL, MachineCoreBlock::class.java)
         registerBlockWithItem(CustomStructureController.KEY, CustomStructureController.MATERIAL, CustomStructureController::class.java)
-        
-        println("[MonolithLib Test] 已注册 4 个测试 Rebar 方块")
+
+        logger.debug { "Registered 4 test Rebar blocks" }
     }
     
     private fun registerBlockWithItem(key: NamespacedKey, material: Material, blockClass: Class<out RebarBlock>) {
@@ -138,14 +141,14 @@ class CustomStructureController(
     
     override fun onBreak(drops: MutableList<ItemStack>, context: BlockBreakContext) {
         drops.clear()
-        
+
         val rebarItem = io.github.pylonmc.rebar.item.builder.ItemStackBuilder
             .rebar(MATERIAL, KEY)
             .build()
-        
+
         drops.add(rebarItem)
-        
-        org.bukkit.Bukkit.getLogger().info("[CustomStructureController] onBreak: 掉落Rebar物品 $KEY")
+
+        logger.debug { "onBreak: Dropped Rebar item $KEY" }
     }
     
     companion object {

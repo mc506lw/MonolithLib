@@ -14,6 +14,8 @@ import top.mc506lw.monolith.api.MonolithAPI
 import top.mc506lw.monolith.api.BlueprintAPI
 import top.mc506lw.monolith.common.Constants
 import top.mc506lw.monolith.common.I18n
+import top.mc506lw.monolith.common.LogConfig
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.lifecycle.ChunkHandler
 import top.mc506lw.monolith.core.io.IOModule
@@ -42,8 +44,8 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         @JvmStatic
         lateinit var instance: MonolithLib
             private set
-        
-        private const val LOG_PREFIX = "[MonolithLib]"
+
+        private val logger = MonolithLogger.getLogger("Core")
     }
     
     override val javaPlugin: JavaPlugin get() = this
@@ -71,9 +73,10 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
     override fun onEnable() {
         instance = this
-        
-        println("$LOG_PREFIX 正在初始化...")
-        
+
+        LogConfig.load(dataFolder)
+        logger.info { "Initializing MonolithLib v${pluginMeta.version}..." }
+
         registerWithRebar()
         
         initializeCore()
@@ -86,11 +89,11 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         initMachines()
         SelectionManager.init()
         
-        println("$LOG_PREFIX 初始化完成! 版本: ${pluginMeta.version}")
+        logger.info { "Initialization complete! Version: ${pluginMeta.version}" }
     }
 
     override fun onDisable() {
-        println("$LOG_PREFIX 正在关闭...")
+        logger.info { "Shutting down..." }
         
         scheduler.shutdown()
         previewModule.onDisable()
@@ -103,8 +106,8 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         top.mc506lw.monolith.feature.buildsite.PrinterManager.cleanup()
         top.mc506lw.monolith.feature.buildsite.LitematicaModeManager.cleanup()
         SelectionManager.shutdown()
-        
-        println("$LOG_PREFIX 已关闭")
+
+        logger.info { "Shutdown complete" }
     }
     
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
@@ -148,7 +151,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         
         val siteCount = BuildSiteManager.getAllActiveSites().size
         if (siteCount > 0) {
-            println("$LOG_PREFIX 恢复 $siteCount 个存档工地")
+            logger.info { "Restored $siteCount persisted build sites" }
             top.mc506lw.monolith.feature.buildsite.EasyBuildManager.rebuildIndex()
         }
         
@@ -176,7 +179,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         try {
             TestModule.init()
         } catch (e: Exception) {
-            println("$LOG_PREFIX [WARN] 示例模块初始化失败: ${e.message}")
+            logger.warn(e) { "Test module initialization failed" }
         }
     }
 
@@ -185,59 +188,60 @@ class MonolithLib : JavaPlugin(), RebarAddon {
             BlueprintTableMachine.registerAll()
             VirtualDisplayAnchorRegistry.register()
         } catch (e: Exception) {
-            println("$LOG_PREFIX [WARN] 机器模块初始化失败: ${e.message}")
+            logger.warn(e) { "Machine module initialization failed" }
         }
 
         try {
             io.github.pylonmc.rebar.item.RebarItem.register(SelectionWand::class.java, SelectionWand.STACK, SelectionWand.KEY)
         } catch (e: Exception) {
-            println("$LOG_PREFIX [WARN] 选区魔杖初始化失败: ${e.message}")
+            logger.warn(e) { "Selection wand initialization failed" }
         }
     }
 
     private fun loadStructures() {
         val blueprints = ioModule.loadAllBlueprints()
-        
+
         blueprints.forEach { blueprint ->
             api.registry.register(blueprint)
-            println("$LOG_PREFIX 注册蓝图: ${blueprint.id} (${blueprint.sizeX}x${blueprint.sizeY}x${blueprint.sizeZ}, ${blueprint.blockCount} 非空方块)")
+            logger.info { "Registered blueprint: ${blueprint.id} (${blueprint.sizeX}x${blueprint.sizeY}x${blueprint.sizeZ}, ${blueprint.blockCount} non-air blocks)" }
         }
-        
-        println("$LOG_PREFIX 共加载 ${blueprints.size} 个蓝图")
+
+        logger.info { "Total blueprints loaded: ${blueprints.size}" }
     }
 
     private fun sendHelp(sender: CommandSender) {
+        val H = I18n.Message.Command.Help
+        sender.sendMessage(H.header)
+        sender.sendMessage(H.title)
         sender.sendMessage("")
-        sender.sendMessage("§6§l[MonolithLib] §f命令帮助")
+        sender.sendMessage(H.separator)
+        sender.sendMessage(H.sectionPreview)
+        sender.sendMessage(H.sectionPreviewArg("<ID>", "预览完整结构"))
+        sender.sendMessage(H.sectionPreviewArg("stop", "停止预览"))
         sender.sendMessage("")
-        sender.sendMessage("§7§m                  §r")
-        sender.sendMessage("  §e/ml preview §7- 全貌预览 §c[OP]")
-        sender.sendMessage("    §f<ID> [facing]           §7预览完整结构")
-        sender.sendMessage("    §fstop                    §7停止预览")
+        sender.sendMessage(H.sectionBuild)
+        sender.sendMessage(H.sectionPreviewArg("here <ID> [facing]", "一键建造"))
+        sender.sendMessage(H.sectionPreviewArg("easy [on|off]", "轻松放置模式"))
+        sender.sendMessage(H.sectionPreviewArg("printer [on|off]", "自动打印模式"))
         sender.sendMessage("")
-        sender.sendMessage("  §e/ml build §7- 建造域")
-        sender.sendMessage("    §fhere <ID> [facing]      §7一键建造")
-        sender.sendMessage("    §feasy [on|off]           §7轻松放置模式")
-        sender.sendMessage("    §fprinter [on|off]        §7自动打印模式")
+        sender.sendMessage(H.sectionBp)
+        sender.sendMessage(H.sectionPreviewArg("list", "列出蓝图"))
+        sender.sendMessage(H.sectionPreviewArg("info <ID>", "蓝图详情"))
+        sender.sendMessage(H.sectionPreviewArg("give <ID>", "给予蓝图物品"))
         sender.sendMessage("")
-        sender.sendMessage("  §e/ml bp §7- 蓝图管理域")
-        sender.sendMessage("    §flist                    §7列出蓝图")
-        sender.sendMessage("    §finfo <ID>               §7蓝图详情")
-        sender.sendMessage("    §fgive <ID>               §7给予蓝图物品")
+        sender.sendMessage(H.sectionSite)
+        sender.sendMessage(H.sectionPreviewArg("list", "活跃工地列表"))
+        sender.sendMessage(H.sectionPreviewArg("info", "附近工地状态"))
+        sender.sendMessage(H.sectionPreviewArg("cancel", "取消工地"))
         sender.sendMessage("")
-        sender.sendMessage("  §e/ml site §7- 工地域")
-        sender.sendMessage("    §flist                    §7活跃工地列表")
-        sender.sendMessage("    §finfo                    §7附近工地状态")
-        sender.sendMessage("    §fcancel                  §7取消工地")
+        sender.sendMessage(H.sectionEdit)
+        sender.sendMessage(H.sectionPreviewArg("wand", "获取选区魔杖"))
+        sender.sendMessage(H.sectionPreviewArg("save <name> [--scaffold|--assembled]","保存结构"))
+        sender.sendMessage(H.sectionPreviewArg("merge <a> <b>", "合并结构"))
         sender.sendMessage("")
-        sender.sendMessage("  §e/ml edit §7- 编辑器域")
-        sender.sendMessage("    §fwand                    §7获取选区魔杖")
-        sender.sendMessage("    §fsave <name> [--scaffold|--assembled]")
-        sender.sendMessage("    §fmerge <a> <b>           §7合并结构")
-        sender.sendMessage("")
-        sender.sendMessage("  §e/ml reload §7- 重载所有结构 §c[管理员]")
-        sender.sendMessage("§7§m                  §r")
-        sender.sendMessage("")
+        sender.sendMessage(H.sectionReload)
+        sender.sendMessage(H.separator)
+        sender.sendMessage(H.footerBlank)
     }
 
     private fun handleReload(sender: CommandSender) {
@@ -280,16 +284,16 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
         val blueprintId = args.getOrNull(0)
         if (blueprintId == null) {
-            sender.sendMessage("§c用法: /ml preview <蓝图ID> [朝向]")
-            sender.sendMessage("§7  stop                  停止预览")
-            sender.sendMessage("§7使用 Tab 键自动补全蓝图名称")
+            sender.sendMessage(I18n.Message.Command.ErrUsage.preview)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.previewStop)
+            sender.sendMessage(I18n.Message.Common.hintTabComplete)
             return
         }
 
         val blueprint = api.registry.get(blueprintId)
         if (blueprint == null) {
-            sender.sendMessage("§c未找到蓝图: §f$blueprintId")
-            sender.sendMessage("§7使用 /ml bp list 查看可用蓝图")
+            sender.sendMessage(I18n.Message.Command.blueprintNotFound(blueprintId))
+            sender.sendMessage(I18n.Message.Command.hintBpList)
             return
         }
 
@@ -308,11 +312,10 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         )
 
         if (session != null) {
-            val legacy = net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
-            sender.sendMessage("§b[全貌预览] §f${legacy.serialize(I18n.Message.Preview.started(blueprint.id, facing.name))}")
-            sender.sendMessage(legacy.serialize(I18n.Message.Preview.previewWillExpire))
+            sender.sendMessage(I18n.Message.Preview.started(blueprint.id, facing.name))
+            sender.sendMessage(I18n.Message.Preview.willExpire)
         } else {
-            sender.sendMessage(I18n.Message.Preview.previewFailed)
+            sender.sendMessage(I18n.Message.Preview.errCreateFailed)
         }
     }
 
@@ -328,20 +331,20 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
     private fun handleBuildDomain(sender: CommandSender, args: List<String>) {
         if (args.isEmpty()) {
-            sender.sendMessage("§c用法: /ml build <here|easy|printer>")
-            sender.sendMessage("§7  here <ID> [facing]   一键建造")
-            sender.sendMessage("§7  easy [on|off]        轻松放置模式")
-            sender.sendMessage("§7  printer [on|off]     自动打印模式")
+            sender.sendMessage(I18n.Message.Command.ErrUsage.build)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.buildHere)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.buildEasy)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.buildPrinter)
             return
         }
-        
+
         when (args[0].lowercase()) {
             "here" -> handleBuildHere(sender, args.drop(1))
             "easy" -> handleBuildEasy(sender, args.drop(1))
             "printer" -> handleBuildPrinter(sender, args.drop(1))
             else -> {
-                sender.sendMessage("§c未知子命令: §f${args[0]}")
-                sender.sendMessage("§7可用: here, easy, printer")
+                sender.sendMessage(I18n.Message.Command.ErrUnknown.build(args[0]))
+                sender.sendMessage(I18n.Message.Command.ErrUnknown.availableBuild)
             }
         }
     }
@@ -359,14 +362,13 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         
         val blueprintId = args.getOrNull(0)
         if (blueprintId == null) {
-            sender.sendMessage("§c用法: /ml build here <蓝图ID> [朝向]")
-            sender.sendMessage("§7在当前位置一键建造结构")
+            sender.sendMessage(I18n.Message.Command.ErrUsage.buildHere)
             return
         }
 
         val blueprint = api.registry.get(blueprintId)
         if (blueprint == null) {
-            sender.sendMessage("§c未找到蓝图: §f$blueprintId")
+            sender.sendMessage(I18n.Message.Command.blueprintNotFound(blueprintId))
             return
         }
 
@@ -404,16 +406,16 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
         when (result) {
             true -> {
-                sender.sendMessage(I18n.Message.Litematica.easybuildEnabled)
-                sender.sendMessage("§7对着幽灵方块右键可自动放置匹配的方块")
-                sender.sendMessage("§7创造模式下无需任何材料")
-                sender.sendMessage("§7离开工地范围1分钟后自动关闭")
+                sender.sendMessage(I18n.Message.BuildMode.easybuildEnabled)
+                sender.sendMessage(I18n.Message.BuildMode.easybuildHint1)
+                sender.sendMessage(I18n.Message.BuildMode.easybuildHint2)
+                sender.sendMessage(I18n.Message.BuildMode.easybuildHint3)
             }
             false -> {
-                sender.sendMessage(I18n.Message.Litematica.easybuildDisabled)
+                sender.sendMessage(I18n.Message.BuildMode.easybuildDisabled)
             }
             null -> {
-                sender.sendMessage(I18n.Message.Litematica.noSiteNearby)
+                sender.sendMessage(I18n.Message.BuildMode.errNoSiteEasybuild)
             }
         }
     }
@@ -433,36 +435,36 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
         when (result) {
             true -> {
-                sender.sendMessage(I18n.Message.Litematica.printerEnabled)
-                sender.sendMessage("§7自动放置周身4格范围内的幽灵方块")
-                sender.sendMessage("§7创造模式下无需任何材料")
-                sender.sendMessage("§7离开工地范围1分钟后自动关闭")
+                sender.sendMessage(I18n.Message.BuildMode.printerEnabled)
+                sender.sendMessage(I18n.Message.BuildMode.printerHint1)
+                sender.sendMessage(I18n.Message.BuildMode.printerHint2)
+                sender.sendMessage(I18n.Message.BuildMode.printerHint3)
             }
             false -> {
-                sender.sendMessage(I18n.Message.Litematica.printerDisabled)
+                sender.sendMessage(I18n.Message.BuildMode.printerDisabled)
             }
             null -> {
-                sender.sendMessage(I18n.Message.Litematica.printerNoSite)
+                sender.sendMessage(I18n.Message.BuildMode.errNoSitePrinter)
             }
         }
     }
 
     private fun handleBlueprintDomain(sender: CommandSender, args: List<String>) {
         if (args.isEmpty()) {
-            sender.sendMessage("§c用法: /ml bp <list|info|give>")
-            sender.sendMessage("§7  list              列出所有蓝图")
-            sender.sendMessage("§7  info <ID>         蓝图详情")
-            sender.sendMessage("§7  give <ID>         给予蓝图物品")
+            sender.sendMessage(I18n.Message.Command.ErrUsage.bp)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.bpList)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.bpInfo)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.bpGive)
             return
         }
-        
+
         when (args[0].lowercase()) {
             "list" -> handleBpList(sender)
             "info" -> handleBpInfo(sender, args.drop(1))
             "give" -> handleBpGive(sender, args.drop(1))
             else -> {
-                sender.sendMessage("§c未知子命令: §f${args[0]}")
-                sender.sendMessage("§7可用: list, info, give")
+                sender.sendMessage(I18n.Message.Command.ErrUnknown.bp(args[0]))
+                sender.sendMessage(I18n.Message.Command.ErrUnknown.availableBp)
             }
         }
     }
@@ -479,8 +481,9 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         
         sender.sendMessage(I18n.Message.Command.List.title(blueprints.size))
         blueprints.forEach { (id, blueprint) ->
-            val rebarInfo = if (blueprint.controllerRebarKey != null) " §b[Rebar]" else ""
-            sender.sendMessage("  §7- §f$id §7(${blueprint.sizeX}x${blueprint.sizeY}x${blueprint.sizeZ}, ${blueprint.blockCount} 方块)$rebarInfo")
+            val rebarInfo = if (blueprint.controllerRebarKey != null) " [Rebar]" else ""
+            sender.sendMessage(I18n.Message.Command.List.entry(
+                id, "${blueprint.sizeX}x${blueprint.sizeY}x${blueprint.sizeZ}", blueprint.blockCount, rebarInfo))
         }
     }
 
@@ -552,25 +555,25 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         }
 
         sender.sendMessage(I18n.Message.Command.Blueprint.given(blueprintId))
-        sender.sendMessage("\u00a77右键空气方块即可创建工地")
+        sender.sendMessage(I18n.Message.Common.hintTabComplete)
     }
 
     private fun handleSiteDomain(sender: CommandSender, args: List<String>) {
         if (args.isEmpty()) {
-            sender.sendMessage("§c用法: /ml site <list|info|cancel>")
-            sender.sendMessage("§7  list              活跃工地列表")
-            sender.sendMessage("§7  info              附近工地状态")
-            sender.sendMessage("§7  cancel            取消附近工地")
+            sender.sendMessage(I18n.Message.Command.ErrUsage.site)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.siteList)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.siteInfo)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.siteCancel)
             return
         }
-        
+
         when (args[0].lowercase()) {
             "list" -> handleSiteList(sender)
             "info" -> handleSiteInfo(sender)
             "cancel" -> handleSiteCancel(sender)
             else -> {
-                sender.sendMessage("§c未知子命令: §f${args[0]}")
-                sender.sendMessage("§7可用: list, info, cancel")
+                sender.sendMessage(I18n.Message.Command.ErrUnknown.site(args[0]))
+                sender.sendMessage(I18n.Message.Command.ErrUnknown.availableSite)
             }
         }
     }
@@ -588,19 +591,20 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
         val sites = BuildSiteManager.getAllActiveSites()
         if (sites.isEmpty()) {
-            sender.sendMessage("§7当前没有活跃的工地")
+            sender.sendMessage(I18n.Message.Command.Site.noneNearby)
             return
         }
 
-        sender.sendMessage("§6§l[MonolithLib] §f活跃工地 (${sites.size})")
+        sender.sendMessage(I18n.Message.Command.Site.listTitle(sites.size))
         sites.forEach { site ->
-            val stateColor = when (site.state) {
-                top.mc506lw.monolith.feature.buildsite.BuildSiteState.BUILDING -> "§a"
-                top.mc506lw.monolith.feature.buildsite.BuildSiteState.AWAITING_CORE -> "§e"
-                top.mc506lw.monolith.feature.buildsite.BuildSiteState.VIRTUAL -> "§7"
+            val stateComponent = when (site.state) {
+                top.mc506lw.monolith.feature.buildsite.BuildSiteState.BUILDING -> I18n.Message.Command.Site.stateBuilding
+                top.mc506lw.monolith.feature.buildsite.BuildSiteState.AWAITING_CORE -> I18n.Message.Command.Site.stateAwaiting
+                top.mc506lw.monolith.feature.buildsite.BuildSiteState.VIRTUAL -> I18n.Message.Command.Site.stateVirtual
             }
-            val stateName = site.state.name
-            sender.sendMessage("  ${stateColor}[${stateName}] §f${site.blueprintId} §7@ (${site.anchorLocation.blockX}, ${site.anchorLocation.blockY}, ${site.anchorLocation.blockZ})")
+            sender.sendMessage(I18n.Message.Command.Site.entry(
+                stateComponent, site.blueprintId,
+                site.anchorLocation.blockX, site.anchorLocation.blockY, site.anchorLocation.blockZ))
         }
     }
 
@@ -626,22 +630,23 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         }
 
         if (nearbySites.isEmpty()) {
-            sender.sendMessage("§7附近没有工地")
+            sender.sendMessage(I18n.Message.Command.Site.errNoneNearby)
             return
         }
 
         nearbySites.forEach { site ->
             sender.sendMessage("")
-            sender.sendMessage("§6§l[工地] §f${site.blueprintId}")
-            sender.sendMessage("  §7状态: ${site.state.name}")
-            sender.sendMessage("  §7位置: (${site.anchorLocation.blockX}, ${site.anchorLocation.blockY}, ${site.anchorLocation.blockZ})")
-            sender.sendMessage("  §7朝向: ${site.facing.name}")
+            sender.sendMessage(I18n.Message.Command.Site.infoTitle(site.blueprintId))
+            sender.sendMessage(I18n.Message.Command.Site.infoState(site.state.name))
+            sender.sendMessage(I18n.Message.Command.Site.infoPosition(site.anchorLocation.blockX, site.anchorLocation.blockY, site.anchorLocation.blockZ))
+            sender.sendMessage(I18n.Message.Command.Site.infoFacing(site.facing.name))
 
             val (placed, total) = site.getProgress()
-            sender.sendMessage("  §7进度: §f$placed/$total §7(${String.format("%.1f", if (total > 0) placed.toDouble() / total.toDouble() * 100 else 100.0)}%)")
-            
+            val percent = String.format("%.1f", if (total > 0) placed.toDouble() / total.toDouble() * 100 else 100.0)
+            sender.sendMessage(I18n.Message.Command.Site.infoProgress(placed, total, percent))
+
             if (site.isCompleted) {
-                sender.sendMessage("  §a✓ 已完工")
+                sender.sendMessage(I18n.Message.Command.Site.infoCompleted)
             }
         }
     }
@@ -668,32 +673,32 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         }
 
         if (nearbySites.isEmpty()) {
-            sender.sendMessage("§7附近没有可取消的工地")
+            sender.sendMessage(I18n.Message.Command.Site.errNoneCancel)
             return
         }
 
         nearbySites.forEach { site ->
             BuildSiteManager.removeSite(site.id)
-            sender.sendMessage("§a已取消工地: §f${site.blueprintId}")
+            sender.sendMessage(I18n.Message.Command.Site.cancelled(site.blueprintId))
         }
     }
 
     private fun handleEditDomain(sender: CommandSender, args: List<String>) {
         if (args.isEmpty()) {
-            sender.sendMessage("§c用法: /ml edit <wand|save|merge>")
-            sender.sendMessage("§7  wand                        获取选区魔杖")
-            sender.sendMessage("§7  save <name> [--scaffold|--assembled]")
-            sender.sendMessage("§7  merge <name1> <name2>")
+            sender.sendMessage(I18n.Message.Command.ErrUsage.edit)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.editWand)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.editSave)
+            sender.sendMessage(I18n.Message.Command.ErrUsage.editMerge)
             return
         }
-        
+
         when (args[0].lowercase()) {
             "wand" -> handleEditWand(sender)
             "save" -> handleEditSave(sender, args.drop(1))
             "merge" -> handleEditMerge(sender, args.drop(1))
             else -> {
-                sender.sendMessage("§c未知子命令: §f${args[0]}")
-                sender.sendMessage("§7可用: wand, save, merge")
+                sender.sendMessage(I18n.Message.Command.ErrUnknown.edit(args[0]))
+                sender.sendMessage(I18n.Message.Command.ErrUnknown.availableEdit)
             }
         }
     }
@@ -711,11 +716,11 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
         val leftover = sender.inventory.addItem(SelectionWand.STACK.clone())
         if (leftover.isNotEmpty()) {
-            sender.sendMessage("§c背包已满，物品已掉落")
+            sender.sendMessage(I18n.Message.Common.errorInventoryFull)
             sender.world.dropItemNaturally(sender.location, SelectionWand.STACK.clone())
         } else {
-            sender.sendMessage("§a已获得选区魔杖")
-            sender.sendMessage("§7左键设置起点，右键设置终点")
+            sender.sendMessage(I18n.Message.Command.Edit.wandGiven)
+            sender.sendMessage(I18n.Message.Command.Edit.wandHint)
         }
     }
 
@@ -732,13 +737,13 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
         val name = args.getOrNull(0)
         if (name == null) {
-            sender.sendMessage("§c用法: /ml edit save <名称> [--scaffold|--assembled]")
+            sender.sendMessage(I18n.Message.Command.ErrUsage.editSave)
             return
         }
 
         val selection = SelectionManager.getSelection(sender)
         if (selection == null || !selection.isComplete) {
-            sender.sendMessage("§c请先用选区魔杖选择区域")
+            sender.sendMessage(I18n.Message.Command.Edit.noSelection)
             return
         }
 
@@ -749,9 +754,9 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         }
 
         try {
-            sender.sendMessage("§e编辑器保存功能开发中...")
+            sender.sendMessage(I18n.Message.Command.Edit.saveDev)
         } catch (e: Exception) {
-            sender.sendMessage("§c保存失败: ${e.message}")
+            sender.sendMessage(I18n.Message.Command.Edit.saveFailed(e.message ?: "unknown"))
         }
     }
 
@@ -767,14 +772,14 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         }
 
         if (args.size < 2) {
-            sender.sendMessage("§c用法: /ml edit merge <结构A> <结构B>")
+            sender.sendMessage(I18n.Message.Command.ErrUsage.editMerge)
             return
         }
 
         try {
-            sender.sendMessage("§e编辑器合并功能开发中...")
+            sender.sendMessage(I18n.Message.Command.Edit.mergeDev)
         } catch (e: Exception) {
-            sender.sendMessage("§c合并失败: ${e.message}")
+            sender.sendMessage(I18n.Message.Command.Edit.mergeFailed(e.message ?: "unknown"))
         }
     }
 }
