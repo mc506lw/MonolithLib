@@ -1,290 +1,421 @@
-addon: "MonolithLib"
+# ============================================================
+# MonolithLib Message Catalog — English
+# ============================================================
+#
+# Color Semantics (Adventure Named Colors):
+#   <red>     Error, forbidden, failure, critical stop
+#   <green>   Success, complete, enabled, confirmation
+#   <yellow>  Warning, in-progress, pending, attention needed
+#   <gray>    Label, hint, secondary info, instruction
+#   <white>   Dynamic value, content body
+#   <gold>    Title, header, brand prefix
+#   <aqua>    Special highlight (Rebar, debug)
+#
+# Prefix Convention:
+#   Error/success/warning → "<gold>[MonolithLib]</gold> " prefix
+#   Info/hint/label      → no prefix (clean output)
+#
+# Placeholder Convention: %variable_name%
+# ============================================================
 
-item:
-  test_controller:
-    name: "Test Controller"
-    lore: "A test controller block for structure testing"
-  furnace_core:
-    name: "Furnace Core"
-    lore: "A furnace core block for smelting structures"
-  machine_core:
-    name: "Machine Core"
-    lore: "A machine core block for complex machinery"
-  custom_controller:
-    name: "Custom Controller"
-    lore: "A universal controller for custom structures"
-  blueprint_table:
-    name: "Blueprint Table"
-    lore: "Place to create blueprint items"
+monolithlib:
 
-message:
-  prefix: "<gold>[MonolithLib]</gold>"
+  # ──────────────────────────────────────────────
+  # ITEM  —  Item names and lore displayed in inventory
+  # ──────────────────────────────────────────────
+  item:
+    test_controller:
+      name: "<gold>Test Controller"
+      lore:
+        - "<gray>A test controller block for structure testing"
+    furnace_core:
+      name: "<gold>Furnace Core"
+      lore:
+        - "<gray>A furnace core block for smelting structures"
+    machine_core:
+      name: "<gold>Machine Core"
+      lore:
+        - "<gray>A machine core block for complex machinery"
+    custom_controller:
+      name: "<gold>Custom Controller"
+      lore:
+        - "<gray>A universal controller for custom structures"
+    blueprint_table:
+      name: "<gold>Blueprint Table"
+      lore:
+        - "<gray>Place to create blueprint items"
+    selection_wand:
+      name: "<yellow>Selection Wand"
+      lore:
+        - "<gray>Left-click to set position A"
+        - "<gray>Right-click to set position B"
+    blueprint_item:
+      name: "<aqua>Blueprint: %blueprint_id%"
+      lore:
+        - "<gray>Blueprint: <white>%blueprint_id%</white>"
+        - "<gray>Size: <white>%size%</white>"
+        - "<gray>Right-click in air to place build site"
 
-  permission_denied: "<red>Permission denied!</red>"
-  player_only: "<red>This command can only be executed by a player!</red>"
+  # ──────────────────────────────────────────────
+  # CHAT  —  All player-facing chat messages
+  # ──────────────────────────────────────────────
+  chat:
 
-  buildsite:
-    preview_cancelled: "<red>[MonolithLib] Build site preview cancelled</red>"
-    target_not_air: "<red>[MonolithLib] Target position is not air or replaceable!</red>"
-    site_exists: "<red>[MonolithLib] There is already a build site here: %blueprint_id%</red>"
-    blueprint_corrupted: "<red>[MonolithLib] Blueprint item data corrupted!</red>"
-    blueprint_not_registered: "<red>[MonolithLib] Blueprint '%blueprint_id%' is not registered!</red>"
-    preview_failed: "<red>[MonolithLib] Preview creation failed!</red>"
-    validation_failed: "<red>[MonolithLib] Validation failed, cannot place!</red>"
-    fix_issues: "<gray>Please resolve the above issues and try again</gray>"
-    site_create_failed: "<red>[MonolithLib] Build site creation failed, possible position conflict!</red>"
-    site_created: "<green>[MonolithLib] Build site created!</green>"
-    site_info: "<gray>Blueprint:</gray> <white>%blueprint_id%</white> <gray>|</gray> <gray>Facing:</gray> <white>%facing%</white>"
-    site_layers: "<gray>Total</gray> <white>%total%</white> <gray>layers, currently at layer</gray> <white>%current%</white>"
-    site_core_hint: "<gray>Core position is marked with red glass, destroy it to cancel and return the blueprint</gray>"
-    existing_blocks: "<gray>Detected</gray> <white>%count%</white> <gray>existing blocks</gray>"
-    layer_completed: "<green>[MonolithLib] Layer %layer% completed!</green>"
-    place_correct_controller: "<red>[MonolithLib] Please place the correct controller!</red>"
-    controller_required: "<gray>Required:</gray> <white>%key%</white>"
-    place_controller_first: "<red>[MonolithLib] Please place the controller at the core position (golden glow marker) first!</red>"
-    core_cannot_place: "<red>[MonolithLib] Cannot place block at core position! Destroy red glass to cancel build site</red>"
-    core_placed_validating: "<yellow>[MonolithLib] Core controller placed! Performing final validation...</yellow>"
-    structure_incomplete: "<red>[MonolithLib] Structure incomplete! Missing %missing% blocks</red>"
-    completion_rate: "<gray>Completion rate:</gray> <white>%rate%%</white>"
-    blocks_need_fix: "<yellow>[MonolithLib] Detected %count% blocks needing state correction...</yellow>"
-    blocks_fixed: "<green>[MonolithLib] Auto-corrected %count% block states</green>"
-    structure_activated: "<green>[MonolithLib] Multiblock structure activated!</green>"
-    structure_complete_waiting: "<yellow>[MonolithLib] Structure complete, waiting for Rebar detection...</yellow>"
-    site_completed_broadcast: "<green>[MonolithLib] Build site '%blueprint_id%' completed! Player %player% finished construction</green>"
-    all_layers_complete: "<yellow>[MonolithLib] All layers complete! Performing final validation...</yellow>"
-    all_layers_progress: "<gray>Completion rate:</gray> <white>%rate%%</white> <gray>(%matched%/%total%)</gray>"
-    all_layers_fix: "<yellow>[MonolithLib] Detected %count% blocks needing correction, auto-correcting...</yellow>"
-    shell_complete_controller: "<green>[MonolithLib] Shell construction complete! Please place core controller to activate</green>"
-    shell_controller_key: "<gray>Controller:</gray> <white>%key%</white>"
-    shell_core_marker: "<gray>Core position shown as golden glowing block</gray>"
-    shell_complete_no_controller: "<green>[MonolithLib] Shell construction complete! Please place block at core position to finish</green>"
-    site_cancelled: "<green>[MonolithLib] Build site cancelled! Blueprint returned</green>"
-    site_cancelled_broadcast: "<gray>[MonolithLib] Player %player% cancelled build site '%blueprint_id%'</gray>"
-    build_block_destroyed: "<yellow>[MonolithLib] Build block destroyed! Golden marker disappeared, build site reverted to layer %layer%</yellow>"
-    structure_disassembled: "<red>[MonolithLib] Core controller destroyed! Structure disassembled, all blocks dropped, build site reset</red>"
-    has_active_preview_block_mode: "<red>[MonolithLib] Active build site preview detected, cannot enable build mode</red>"
-    preview_expired: "<red>[MonolithLib] Preview expired and auto-cancelled</red>"
-    preview_countdown: "<yellow>Preview will auto-cancel in <red>%countdown%s <yellow></yellow>"
-    preview_header: "<yellow>========== Build Site Preview =========="
-    preview_blueprint: "<gray>Blueprint: <white>%blueprint_id%</white></gray>"
-    preview_facing: "<gray>Facing: <white>%facing%</white></gray>"
-    preview_size: "<gray>Size: <white>%width% x %height% x %depth%</white></gray>"
-    preview_position: "<gray>Position: <white>(%min_x%, %min_y%, %min_z%) ~ (%max_x%, %max_y%, %max_z%)</white></gray>"
-    preview_valid: "<green>✓ Validation passed, can place</green>"
-    preview_errors: "<red>✗ Detected %count% issues:</red>"
-    preview_warnings: "<gold>⚠ Warnings:</gold>"
-    preview_instructions: "<gray>Right-click to confirm, sneak+right-click to cancel</gray>"
-    preview_auto_cancel: "<gray>Preview will auto-cancel in <red>%seconds%s <gray></gray>"
-    preview_footer: "<yellow>=============================="
+    # ─── Common shared messages ───
+    common:
+      prefix: "<gold>[MonolithLib]</gold>"
+      error_permission_denied: "<red>[MonolithLib] Permission denied.</red>"
+      error_player_only: "<red>[MonolithLib] This command can only be used by a player.</red>"
+      error_inventory_full: "<red>[MonolithLib] Inventory full, item dropped on ground.</red>"
+      hint_tab_complete: "<gray>Press Tab to auto-complete names</gray>"
 
-  easybuild:
-    layer_completed: "<green>[MonolithLib] Layer %layer% complete! Auto-switching to next layer...</green>"
-    all_complete: "<yellow>[MonolithLib] All layers complete! Performing final validation...</yellow>"
-    progress: "<gray>Completion rate:</gray> <white>%rate%%</white> <gray>(%matched%/%total%)</gray>"
-    need_fix: "<yellow>[MonolithLib] Detected %count% blocks needing correction, auto-correcting...</yellow>"
-    fixed: "<green>[MonolithLib] Auto-corrected %count% block states</green>"
-    shell_complete: "<green>[MonolithLib] Shell construction complete! Please place core controller to activate</green>"
-    shell_controller: "<gray>Controller:</gray> <white>%key%</white>"
-    shell_complete_no_core: "<green>[MonolithLib] Shell construction complete! Please place block at core position to finish</green>"
+    # ─── Selection wand messages ───
+    selection:
+      pos1_set: "<green>[MonolithLib] Pos1 <white>set to (%x%, %y%, %z%)</white>"
+      complete: "<gray>[MonolithLib] Selection complete: <white>%count% blocks</white>"
+      hint_pos2: "<gray>[MonolithLib] Right-click to set Pos2</gray>"
+      err_no_pos1: "<red>[MonolithLib] Left-click to set Pos1 first!</red>"
+      err_different_world: "<red>[MonolithLib] Pos1 and Pos2 must be in the same world!</red>"
+      pos2_set: "<green>[MonolithLib] Pos2 <white>set to (%x%, %y%, %z%)</white>"
+      hint_save: "<gray>[MonolithLib] Use /ml save &lt;name&gt; to save as .raw.mnb</gray>"
 
-  printer:
-    layer_completed: "<green>[MonolithLib] Layer %layer% complete! Auto-switching to next layer...</green>"
-    all_complete: "<yellow>[MonolithLib] All layers complete! Performing final validation...</yellow>"
-    progress: "<gray>Completion rate:</gray> <white>%rate%%</white> <gray>(%matched%/%total%)</gray>"
-    need_fix: "<yellow>[MonolithLib] Detected %count% blocks needing correction, auto-correcting...</yellow>"
-    fixed: "<green>[MonolithLib] Auto-corrected %count% block states</green>"
-    shell_complete: "<green>[MonolithLib] Shell construction complete! Please place core controller to activate</green>"
-    shell_controller: "<gray>Controller:</gray> <white>%key%</white>"
-    shell_complete_no_core: "<green>[MonolithLib] Shell construction complete! Please place block at core position to finish</green>"
+    # ─── Command system ───
+    command:
 
-  litematica:
-    mode_auto_disabled: "<red>[MonolithLib] %modes% mode auto-disabled (away from build site too long)</red>"
-    left_range_countdown: "<yellow>[MonolithLib] Left build site range, auto-disabling in</yellow> <red>%countdown%s</red>"
-    easybuild_enabled: "<green>[MonolithLib] Easy Build mode enabled</green>"
-    easybuild_hints:
-      - "<gray>Right-click on ghost blocks to auto-place matching blocks</gray>"
-      - "<gray>No materials needed in creative mode</gray>"
-      - "<gray>Auto-disables after 1 minute away from build site</gray>"
-    easybuild_disabled: "<red>[MonolithLib] Easy Build mode disabled</red>"
-    no_site_nearby: "<red>[MonolithLib] No build site nearby, cannot enable Easy Build mode</red>"
-    printer_enabled: "<green>[MonolithLib] Auto Printer mode enabled</green>"
-    printer_hints:
-      - "<gray>Auto-places ghost blocks within 4 blocks of player</gray>"
-      - "<gray>No materials needed in creative mode</gray>"
-      - "<gray>Auto-disables after 1 minute away from build site</gray>"
-    printer_disabled: "<red>[MonolithLib] Auto Printer mode disabled</red>"
-    printer_no_site: "<red>[MonolithLib] No build site nearby, cannot enable Auto Printer mode</red>"
-    usage: "<red>Usage: /ml litematica <easybuild|printer></red>"
+      # Help menu (multi-line)
+      help:
+        header: ""
+        title: "<gold><bold>[MonolithLib]</bold> <white>Command Help</white></gold>"
+        separator: "<gray><strikethrough>                                    </strikethrough></gray>"
+        footer: "<gray><strikethrough>                                    </strikethrough></gray></gray>"
+        footer_blank: ""
 
-  blueprint_table:
-    craft_success: "<green>[Blueprint Table] Successfully crafted blueprint!</green>"
-    gui_title: "Blueprint Table"
+        section_preview: "<yellow>/ml preview</yellow> <gray>- Structure preview <red>[OP]</red>"
+        section_preview_arg: "  <white>%arg%</white>                    <gray>%desc%</gray>"
+        section_build: "<yellow>/ml build</yellow> <gray>- Construction commands</gray>"
+        section_bp: "<yellow>/ml bp</yellow> <gray>- Blueprint management</gray>"
+        section_site: "<yellow>/ml site</yellow> <gray>- Build site management</gray>"
+        section_edit: "<yellow>/ml edit</yellow> <gray>- Editor tools <red>[OP]</red></gray>"
+        section_reload: "<yellow>/ml reload</yellow> <gray>- Reload all structures <red>[Admin]</red></gray>"
 
-  builder:
-    world_unloaded: "<red>[MonolithLib] World not loaded!</red>"
-    conflicting_blocks: "<red>[MonolithLib] Construction area has conflicting blocks!</red>"
-    conflict_positions: "<gray>Conflict positions:</gray> <white>%positions%</white>"
-    more_conflicts: "<gray>... and %count% more conflict positions</gray>"
-    insufficient_materials: "<red>[MonolithLib] Insufficient materials!</red>"
-    missing_material: "<gray>- %material%: Missing %count%</gray>"
-    world_unloaded_cancelled: "<red>[MonolithLib] World unloaded, construction cancelled</red>"
-    build_progress: "<green>[MonolithLib] Construction progress: %placed%/%total% (%progress%)</green>"
-    start_build: "<green>[MonolithLib] Starting construction: %blueprint_id%</green>"
-    build_info: "<gray>Total %count% blocks, building 500 at a time</gray>"
-    build_cancelled: "<yellow>[MonolithLib] Construction cancelled</yellow>"
-    build_complete: "<green>[MonolithLib] Construction complete!</green>"
-    structure_info: "<gray>Structure:</gray> <white>%blueprint_id%</white>"
+        # Reload
+        reload_starting: "<green>[MonolithLib] Reloading...</green>"
+        reload_complete: "<green>[MonolithLib] Reload complete! Loaded %count% structures.</green>"
 
-  preview:
-    started: "<green>Preview started: %structure_id% (%facing%)</green>"
-    stopped: "<green>Stopped %count% preview(s)</green>"
-    expired: "<yellow>Preview has expired</yellow>"
-    no_active: "<red>You have no active previews</red>"
-    layer_changed: "<green>Switched to layer: %layer%</green>"
-    layer_up: "<green>Switched to upper layer</green>"
-    layer_down: "<green>Switched to lower layer</green>"
-    layer_top: "<red>Already at the top layer</red>"
-    layer_bottom: "<red>Already at the bottom layer</red>"
-    layer_invalid: "<red>Invalid layer number: %layer%</red>"
-    layer_out_of_range: "<red>Layer out of range</red>"
-    current_layer: "<gray>Current layer: <white>%current%/%max%</white></gray>"
-    current_position: "<gray>Current position: <white>%x%, %y%, %z%</white></gray>"
-    use_layer_command: "<gray>Use /ml preview layer up/down to switch layers</gray>"
-    progress: "<gray>Progress: <white>%correct%/%total%</white> <green>%completed%</green></gray>"
-    completed: "<green>Structure %structure_id% completed!</green>"
-    controller_broken: "<red>Controller block has been destroyed, preview cancelled</red>"
-    not_found: "<red>Structure not found: %structure_id%</red>"
-    start_preview: "<gray>Use /ml preview show <ID> to start a preview</gray>"
-    preview_will_expire: "<gray>Preview will disappear in 10 seconds</gray>"
-    preview_cancelled: "<green>Preview cancelled</green>"
-    preview_failed: "<red>Failed to create preview</red>"
-    summary_title: "<yellow>========== Build Site Preview ==========</yellow>"
-    summary_blueprint: "<gray>Blueprint:</gray> <white>%blueprint_id%</white>"
-    summary_facing: "<gray>Facing:</gray> <white>%facing%</white>"
-    summary_range: "<gray>Range:</gray> <white>%width% x %height% x %depth%</white>"
-    summary_position: "<gray>Position:</gray> <white>%min% ~ %max%</white>"
-    summary_validation_pass: "<green>✓ Validation passed, can place</green>"
-    summary_validation_fail: "<red>✗ Detected %count% issues:</red>"
-    summary_error_item: "<red>- %message%</red>"
-    summary_warning: "<yellow>⚠ Warnings:</yellow>"
-    summary_warning_item: "<yellow>- %message%</yellow>"
-    summary_confirm: "<gray>Right-click to confirm, sneak+right-click to cancel</gray>"
-    summary_expire: "<gray>Preview will auto-cancel in</gray> <red>10 seconds</red>"
-    summary_end: "<yellow>==============================</yellow>"
-    timeout_cancelled: "<red>[MonolithLib] Preview timed out and was cancelled</red>"
-    timeout_countdown: "<yellow>Preview will auto-cancel in</yellow> <red>%countdown%s</red>"
-  
-  structure:
-    formed: "<green>Structure %structure_id% has been formed!</green>"
-    broken: "<red>Structure %structure_id% has been broken!</red>"
-    not_found: "<red>Structure not found: %structure_id%</red>"
-    no_blocks: "<yellow>Warning: This structure has no blocks defined!</yellow>"
-    add_blocks_hint: "<gray>Please add blocks section in YAML config</gray>"
-    controller_detected: "<green>Controller detected: %key%</green>"
-    associated_structure: "<gray>Associated structure: %structure_id%</gray>"
-    block_count: "<gray>Block count: %count%</gray>"
-    slots: "<gray>Slots: %slots%</gray>"
-    custom_data: "<gray>Custom data: %count% items</gray>"
-  
-  command:
-    help:
-      title: "<gold>[MonolithLib] Help:</gold>"
-      reload: "<gray>/ml reload</gray> <white>- Reload all structures</white>"
-      list: "<gray>/ml list</gray> <white>- List all registered blueprints</white>"
-      info: "<gray>/ml info [ID]</gray> <white>- Show plugin info or blueprint details</white>"
-      preview: "<gray>/ml preview [cancel]</gray> <white>- Preview structure (point at controller)</white>"
-      build: "<gray>/ml build [cancel]</gray> <white>- Quick build (point at controller)</white>"
-      usage: "<gray>Usage:</gray>"
-      step1: "<white>1. Point at a registered controller block</white>"
-      step2: "<white>2. Type /ml preview to preview</white>"
-      step3: "<white>3. Type /ml build to build</white>"
-    
-    reload:
-      starting: "<green>Reloading...</green>"
-      complete: "<green>Reload complete! Loaded %count% structures</green>"
-    
-    list:
-      title: "<gold>[MonolithLib] Registered structures (%count%):</gold>"
-      empty: "<yellow>No registered structures</yellow>"
-      hint: "<gray>Tip: Put structure files in %path%</gray>"
-      formats: "<gray>Supported formats: .mnb, .schem, .litematic, .nbt</gray>"
-    
-    files:
-      title: "<gold>[MonolithLib] File directories:</gold>"
-      imports: "<gray>imports/</gray> <white>- Files to import</white>"
-      blueprints: "<gray>blueprints/</gray> <white>- Blueprints (original structure + config)</white>"
-      products: "<gray>products/</gray> <white>- Products (final usable structures)</white>"
-      imports_title: "<gold>[MonolithLib] To import (%count%):</gold>"
-      blueprints_title: "<gold>[MonolithLib] Blueprints (%count%):</gold>"
-      products_title: "<gold>[MonolithLib] Products (%count%):</gold>"
-      status_ready: "<green>[Ready]</green>"
-      status_pending: "<yellow>[Pending config]</yellow>"
-      status_missing: "<red>[Missing data]</red>"
-      more_files: "<gray>... and %count% more files</gray>"
-      no_files: "<yellow>No structure files found</yellow>"
-      no_files_hint: "<gray>Put .schem/.litematic/.nbt files in imports/ directory</gray>"
-    
-    info:
-      title: "<gold>[MonolithLib] Info:</gold>"
-      version: "<gray>Version:</gray> <white>%version%</white>"
-      registered: "<gray>Registered blueprints:</gray> <white>%count%</white>"
-      import_dir: "<gray>Import directory:</gray> <white>%path%</white>"
-      blueprint_dir: "<gray>Blueprint directory:</gray> <white>%path%</white>"
-      product_dir: "<gray>Product directory:</gray> <white>%path%</white>"
-      formats: "<gray>Supported formats:</gray> <white>.mnb, .schem, .litematic, .nbt</white>"
-      rebar_enabled: "<green>Enabled</green>"
-      rebar_disabled: "<red>Not detected</red>"
-      rebar_integration: "<gray>Rebar integration:</gray> %status%"
-      blueprint_not_found: "<red>Blueprint not found: %id%</red>"
-      blueprint_title: "<gold>[Blueprint] %id%</gold>"
-      size: "<gray>Size:</gray> <white>%x% x %y% x %z%</white>"
-      block_count: "<gray>Block count:</gray> <white>%count%</white>"
-      name: "<gray>Name:</gray> <white>%name%</white>"
-      description: "<gray>Description:</gray> <white>%description%</white>"
-    
-    usage: "<red>Usage: %usage%</red>"
-    point_at_controller: "<red>Please point at a registered controller block!</red>"
-    controller_must_be_rebar: "<gray>Controller must be a Rebar block with associated blueprint</gray>"
-    build_cancelled: "<yellow>Build cancelled</yellow>"
-    build_failed: "<red>Failed to start construction</red>"
-    
-    blueprint:
-      title: "<gold>[Blueprint] %id%</gold>"
-      given: "<green>Given blueprint: %id%</green>"
-      not_found: "<red>Blueprint not found: %id%</red>"
-      no_id: "<red>Please specify a blueprint ID</red>"
-      inventory_full: "<red>Inventory full, item dropped</red>"
-      hint: "<gray>Usage: /ml bp give <blueprint ID></gray>"
-  
-  test:
-    controller_detected: "<gray>[MLTest] Detected test_controller -> test_simple_3x3</gray>"
-    furnace_detected: "<gray>[MLTest] Detected furnace_core -> test_loose_furnace</gray>"
-    machine_detected: "<gray>[MLTest] Detected machine_core -> test_rebar_machine</gray>"
-    rebar_required: "<aqua>[MLTest] This structure requires Rebar components!</aqua>"
-    custom_detected: "<gray>[MLTest] Detected custom_controller</gray>"
-    custom_hint: "<yellow>[MLTest] This is a universal controller, please configure the corresponding structure in YAML</yellow>"
-    preview_started: "<green>Preview started: %structure_id%</green>"
-  
-  rebar:
-    integration_enabled: "Rebar integration enabled"
-    integration_disabled: "Rebar not detected, skipping integration"
-    integration_failed: "Rebar initialization failed: %error%"
-  
-  io:
-    imported_blueprint: "Imported blueprint: %name% (%count% blocks)"
-    rebuilt_product: "Rebuilt product: %name%"
-    loaded_standalone: "Loaded standalone product: %name%"
-    load_failed: "Failed to load .mnb file: %file% - %error%"
-    save_failed: "Failed to save .mnb file: %file% - %error%"
-  
-  init:
-    starting: "Initializing..."
-    complete: "Initialization complete! Version: %version%"
-    shutting_down: "Shutting down..."
-    shutdown_complete: "Shutdown complete"
-    registering_structure: "Registering structure: %id% (%size%, %count% non-air blocks)"
-    loaded_structures: "Loaded %count% structures"
-    test_module_init: "Initializing test module..."
-    test_module_complete: "Test module initialized! Use /ml for commands"
-    test_structures_registered: "Registered %count% test structures"
-    test_blocks_registered: "Registered %count% test Rebar blocks"
+        # List blueprints
+        list_title: "<gold><bold>[MonolithLib]</bold> <white>Registered Blueprints (%count%)</white></gold>"
+        list_entry: "  <gray>-</gray> <white>%id%</white> <gray>(%size%, %block_count% blocks)%rebar_tag%</gray>"
+        list_empty: "<yellow>No registered blueprints found.</yellow>"
+        list_hint: "<gray>Tip: Place .schem/.litematic/.nbt files in %path%</gray>"
+        list_formats: "<gray>Supported formats: <white>.mnb, .schem, .litematic, .nbt</white></gray>"
+
+        # Info
+        info_title: "<gold><bold>[MonolithLib]</bold> <white>Plugin Information</white></gold>"
+        info_version: "<gray>Version:</gray>       <white>%version%</white>"
+        info_registered: "<gray>Blueprints:</gray>    <white>%count%</white>"
+        info_import_dir: "<gray>Import dir:</gray>    <white>%path%</white>"
+        info_blueprint_dir: "<gray>Blueprint dir:</gray> <white>%path%</white>"
+        info_product_dir: "<gray>Product dir:</gray>   <white>%path%</white>"
+        info_formats: "<gray>Formats:</gray>       <white>.mnb, .schem, .litematic, .nbt</white>"
+        info_rebar_enabled: "<green>Enabled</green>"
+        info_rebar_disabled: "<red>Not detected</red>"
+        info_rebar_integration: "<gray>Rebar integration:</gray> %status%"
+        info_bp_title: "<gold><bold>[Blueprint]</bold> <white>%id%</white></gold>"
+        info_bp_size: "<gray>Size:</gray>         <white>%x% x %y% x %z%</white>"
+        info_bp_blocks: "<gray>Block count:</gray>  <white>%count%</white>"
+        info_bp_name: "<gray>Name:</gray>         <white>%name%</white>"
+        info_bp_desc: "<gray>Description:</gray>  <white>%desc%</white>"
+        info_bp_not_found: "<red>Blueprint not found: %id%</red>"
+
+        # Blueprint give
+        bp_given: "<green>[MonolithLib] Gave blueprint: %id%</green>"
+        bp_not_found: "<red>Blueprint not found: %id%</red>"
+        bp_no_id: "<red>Please specify a blueprint ID.</red>"
+        bp_hint: "<gray>Usage: /ml bp give <blueprint_id></gray>"
+
+        # Usage errors (generic)
+        err_usage_preview: "<red>Usage: /ml preview <blueprint_id> [facing]</red>"
+        err_usage_preview_stop: "<gray>  stop              Stop preview</gray>"
+        err_usage_build: "<red>Usage: /ml build <here|easy|printer></red>"
+        err_usage_build_here: "<gray>  here <ID> [facing]  Quick build at location</gray>"
+        err_usage_build_easy: "<gray>  easy [on|off]       Toggle easy-build mode</gray>"
+        err_usage_build_printer: "<gray>  printer [on|off]    Toggle auto-printer mode</gray>"
+        err_usage_bp: "<red>Usage: /ml bp <list|info|give></red>"
+        err_usage_bp_list: "<gray>  list              List all blueprints</gray>"
+        err_usage_bp_info: "<gray>  info <ID>         Show blueprint details</gray>"
+        err_usage_bp_give: "<gray>  give <ID>         Give blueprint item</gray>"
+        err_usage_site: "<red>Usage: /ml site <list|info|cancel></red>"
+        err_usage_site_list: "<gray>  list              List active build sites</gray>"
+        err_usage_site_info: "<gray>  info              Nearby site status</gray>"
+        err_usage_site_cancel: "<gray>  cancel            Cancel nearby site</gray>"
+        err_usage_edit: "<red>Usage: /ml edit <wand|save|merge></red>"
+        err_usage_edit_wand: "<gray>  wand              Get selection wand</gray>"
+        err_usage_edit_save: "<gray>  save <name> [--scaffold|--assembled]</gray>"
+        err_usage_edit_merge: "<gray>  merge <a> <b>      Merge two structures</gray>"
+
+        # Subcommand errors
+        err_unknown_subcmd_preview: "<red>Unknown subcommand: %arg%</red>"
+        err_available_preview: "<gray>Available: show, stop</gray>"
+        err_unknown_subcmd_build: "<red>Unknown subcommand: %arg%</red>"
+        err_available_build: "<gray>Available: here, easy, printer</gray>"
+        err_unknown_subcmd_bp: "<red>Unknown subcommand: %arg%</red>"
+        err_available_bp: "<gray>Available: list, info, give</gray>"
+        err_unknown_subcmd_site: "<red>Unknown subcommand: %arg%</red>"
+        err_available_site: "<gray>Available: list, info, cancel</gray>"
+        err_unknown_subcmd_edit: "<red>Unknown subcommand: %arg%</red>"
+        err_available_edit: "<gray>Available: wand, save, merge</gray>"
+
+        # Blueprint not found (shared)
+        err_blueprint_not_found: "<red>Blueprint not found: %id%</red>"
+        err_hint_bp_list: "<gray>Use /ml bp list to view available blueprints</gray>"
+
+        # Build failed
+        err_build_failed: "<red>[MonolithLib] Failed to start construction.</red>"
+
+        # Edit-specific
+        edit_no_selection: "<red>Please select an area with the Selection Wand first.</red>"
+        edit_save_dev: "<yellow>Edit save feature is under development...</yellow>"
+        edit_save_failed: "<red>Save failed: %error%</red>"
+        edit_merge_dev: "<yellow>Edit merge feature is under development...</yellow>"
+        edit_merge_failed: "<red>Merge failed: %error%</red>"
+        wand_given: "<green>[MonolithLib] Received Selection Wand.</green>"
+        wand_hint: "<gray>Left-click to set point A, right-click to set point B</gray>"
+
+      # Site list & detail
+      site:
+        list_title: "<gold><bold>[MonolithLib]</bold> <white>Active Build Sites (%count%)</white></gold>"
+        list_entry_state_building: "<green>[BUILDING]</green>"
+        list_entry_state_awaiting: "<yellow>[AWAITING_CORE]</yellow>"
+        list_entry_state_virtual: "<gray>[VIRTUAL]</gray>"
+        list_entry: "  %state% <white>%blueprint_id%</white> <gray>@ (%x%, %y%, %z%)</gray>"
+        list_none: "<gray>No active build sites nearby.</gray>"
+        info_title: "<gold><bold>[Build Site]</bold> <white>%blueprint_id%</white></gold>"
+        info_state: "<gray>State:</gray>   <white>%state%</white>"
+        info_position: "<gray>Position:</gray> <white>(%x%, %y%, %z%)</white>"
+        info_facing: "<gray>Facing:</gray>  <white>%facing%</white>"
+        info_progress: "<gray>Progress:</gray> <white>%placed%/%total%</white> <gray>(%percent%%)</gray>"
+        info_completed: "<green>  ✓ Completed</green>"
+        err_none_nearby: "<gray>No build sites nearby.</gray>"
+        err_none_cancel: "<gray>No cancellable build sites nearby.</gray>"
+        cancelled: "<green>[MonolithLib] Build site cancelled: %blueprint_id%</green>"
+
+    # ─── Build Site lifecycle ───
+    build_site:
+      preview_cancelled: "<red>[MonolithLib] Build site preview cancelled.</red>"
+      err_target_not_air: "<red>[MonolithLib] Target position is not air or replaceable!</red>"
+      err_site_exists: "<red>[MonolithLib] A build site already exists here: %blueprint_id%</red>"
+      err_blueprint_corrupted: "<red>[MonolithLib] Blueprint item data corrupted!</red>"
+      err_blueprint_unregistered: "<red>[MonolithLib] Blueprint '%blueprint_id%' is not registered!</red>"
+      err_preview_create_fail: "<red>[MonolithLib] Failed to create preview!</red>"
+      err_validation_failed: "<red>[MonolithLib] Validation failed, cannot place!</red>"
+      hint_fix_issues: "<gray>Please resolve the above issues and try again.</gray>"
+      err_create_fail: "<red>[MonolithLib] Build site creation failed (possible position conflict)!</red>"
+      created: "<green>[MonolithLib] Build site created!</green>"
+      info_line: "<gray>Blueprint:</gray> <white>%blueprint_id%</white> <gray>|</gray> <gray>Facing:</gray> <white>%facing%</white>"
+      layers_info: "<gray>Total <white>%total%</white> layers, currently on layer <white>%current%</white></gray>"
+      hint_core: "<gray>Core position marked with red glass — break it to cancel and return blueprint</gray>"
+      existing_blocks: "<gray>Detected <white>%count%</white> existing blocks</gray>"
+      layer_completed: "<green>[MonolithLib] Layer %layer% completed!</green>"
+      err_wrong_controller: "<red>[MonolithLib] Please place the correct controller!</red>"
+      controller_required: "<gray>Required:</gray> <white>%key%</white>"
+      err_place_controller_first: "<red>[MonolithLib] Please place the controller at the core position (golden glow marker) first!</red>"
+      err_core_blocked: "<red>[MonolithLib] Cannot place block at core position! Break red glass to cancel build site</red>"
+      core_placed_validating: "<yellow>[MonolithLib] Core controller placed! Performing final validation...</yellow>"
+      err_incomplete: "<red>[MonolithLib] Structure incomplete! Missing %missing% blocks</red>"
+      completion_rate: "<gray>Completion rate:</gray> <white>%rate%%</white>"
+      warn_blocks_need_fix: "<yellow>[MonolithLib] Detected %count% blocks needing state correction...</yellow>"
+      blocks_fixed: "<green>[MonolithLib] Auto-corrected %count% block states</green>"
+      activated: "<green>[MonolithLib] Multiblock structure activated!</green>"
+      complete_waiting: "<yellow>[MonolithLib] Structure complete, waiting for Rebar detection...</yellow>"
+      completed_broadcast: "<green>[MonolithLib] Build site '%blueprint_id%' completed! Player %player% finished construction</green>"
+      all_layers_complete: "<yellow>[MonolithLib] All layers complete! Performing final validation...</yellow>"
+      all_layers_progress: "<gray>Completion rate:</gray> <white>%rate%%</white> <gray>(%matched%/%total%)</gray>"
+      all_layers_fix: "<yellow>[MonolithLib] Detected %count% blocks needing correction, auto-correcting...</yellow>"
+      shell_done_controller: "<green>[MonolithLib] Shell complete! Please place core controller to activate</green>"
+      shell_controller_key: "<gray>Controller:</gray> <white>%key%</white>"
+      shell_core_marker: "<gray>Core position shown as golden glowing block</gray>"
+      shell_done_no_controller: "<green>[MonolithLib] Shell complete! Please place a block at the core position to finish</green>"
+      cancelled_returned: "<green>[MonolithLib] Build site cancelled! Blueprint returned</green>"
+      cancelled_broadcast: "<gray>[MonolithLib] Player %player% cancelled build site '%blueprint_id%'</gray>"
+      block_destroyed_revert: "<yellow>[MonolithLib] Build block destroyed! Golden marker disappeared, reverted to layer %layer%</yellow>"
+      disassembled: "<red>[MonolithLib] Core controller destroyed! Structure disassembled, all items dropped, build site reset</red>"
+      err_has_active_preview: "<red>[MonolithLib] Active build site preview detected, cannot enable build mode</red>"
+      preview_expired: "<red>[MonolithLib] Preview expired and auto-cancelled</red>"
+      preview_countdown: "<yellow>Preview will auto-cancel in <red>%countdown%s</red> </yellow>"
+
+      # Preview overlay (Hologram-style)
+      preview_header: "<yellow>========== Build Site Preview =========="
+      preview_blueprint: "<gray>Blueprint: <white>%blueprint_id%</white></gray>"
+      preview_facing: "<gray>Facing: <white>%facing%</white></gray>"
+      preview_size: "<gray>Size: <white>%width% x %height% x %depth%</white></gray>"
+      preview_position: "<gray>Position: <white>(%min_x%, %min_y%, %min_z%) ~ (%max_x%, %max_y%, %max_z%)</white></gray>"
+      preview_valid: "<green>✓ Validation passed, can place</green>"
+      preview_errors: "<red>✗ Detected %count% issues:</red>"
+      preview_warnings: "<gold>⚠ Warnings:</gold>"
+      preview_instructions: "<gray>Right-click to confirm, sneak+right-click to cancel</gray>"
+      preview_auto_cancel: "<gray>Preview will auto-cancel in <red>%seconds%s</red> </gray>"
+      preview_footer: "<yellow>======================================"
+
+      # New build site messages
+      err_vm_zone_block: "<red>[MonolithLib] Cannot place blocks in virtual machine area</red>"
+      preview_cancelled_hotbar: "<yellow>[MonolithLib] Preview cancelled (hotbar switched)</yellow>"
+      err_position_in_site: "<red>[MonolithLib] Position is already within a build site</red>"
+      preview_moved: "<green><bold>[MonolithLib]</bold> <white>Preview moved to new position</white></green>"
+      preview_confirm_hint: "<green><bold>[MonolithLib]</bold> <white>Right-click same location again to <yellow>confirm creation</yellow></white></green>"
+      preview_timeout_hint: "<gray>(Valid for 30 seconds, moving far away will cancel)</gray>"
+      all_layers_complete_hint: "<yellow>[MonolithLib] All layers complete, place core controller</yellow>"
+      structure_disassembled_retry: "<yellow>[MonolithLib] Structure disassembled, re-entering build mode (layer: %layer%)</yellow>"
+      structure_disassembled_retry_no_layer: "<yellow>[MonolithLib] Structure disassembled, re-entering build mode</yellow>"
+
+    # ─── Build Mode (EasyBuild + Printer merged) ───
+    build_mode:
+      # Mode toggle responses
+      easybuild_enabled: "<green>[MonolithLib] Easy-Build mode enabled</green>"
+      easybuild_hint_1: "<gray>Right-click ghost blocks to auto-place matching blocks</gray>"
+      easybuild_hint_2: "<gray>No materials required in creative mode</gray>"
+      easybuild_hint_3: "<gray>Auto-disables after 1 minute away from build site</gray>"
+      easybuild_disabled: "<red>[MonolithLib] Easy-Build mode disabled</red>"
+      printer_enabled: "<green>[MonolithLib] Auto-Printer mode enabled</green>"
+      printer_hint_1: "<gray>Auto-places ghost blocks within 4 blocks of player</gray>"
+      printer_hint_2: "<gray>No materials required in creative mode</gray>"
+      printer_hint_3: "<gray>Auto-disables after 1 minute away from build site</gray>"
+      printer_disabled: "<red>[MonolithLib] Auto-Printer mode disabled</red>"
+
+      # Common mode errors
+      err_no_site_easybuild: "<red>[MonolithLib] No build site nearby, cannot enable Easy-Build mode</red>"
+      err_no_site_printer: "<red>[MonolithLib] No build site nearby, cannot enable Auto-Printer mode</red>"
+      err_mode_auto_disabled: "<red>[MonolithLib] %mode% auto-disabled (away from build site too long)</red>"
+      left_range_countdown: "<yellow>[MonolithLib] Left build site range, auto-disabling in <red>%countdown%s</red></yellow>"
+      usage_litematica: "<red>Usage: /ml litematica <easybuild|printer></red>"
+
+      # Progress messages (shared by both modes)
+      layer_completed: "<green>[MonolithLib] Layer %layer% complete! Switching to next layer...</green>"
+      all_complete: "<yellow>[MonolithLib] All layers complete! Performing final validation...</yellow>"
+      progress: "<gray>Completion rate:</gray> <white>%rate%%</white> <gray>(%matched%/%total%)</gray>"
+      need_fix: "<yellow>[MonolithLib] Detected %count% blocks needing correction, auto-correcting...</yellow>"
+      fixed: "<green>[MonolithLib] Auto-corrected %count% block states</green>"
+      shell_complete: "<green>[MonolithLib] Shell complete! Please place core controller to activate</green>"
+      shell_controller: "<gray>Controller:</gray> <white>%key%</white>"
+      shell_complete_no_core: "<green>[MonolithLib] Shell complete! Place a block at core position to finish</green>"
+
+    # ─── Structure Preview (full-scope ghost rendering) ───
+    preview:
+      started: "<green>Preview started: %structure_id% (%facing%)</green>"
+      stopped: "<green>Stopped %count% preview(s)</green>"
+      expired: "<yellow>Preview has expired</yellow>"
+      err_no_active: "<red>You have no active previews</red>"
+      layer_changed: "<green>Switched to layer: %layer%</green>"
+      layer_up: "<green>Switched to upper layer</green>"
+      layer_down: "<green>Switched to lower layer</green>"
+      err_layer_top: "<red>Already at the top layer</red>"
+      err_layer_bottom: "<red>Already at the bottom layer</red>"
+      err_layer_invalid: "<red>Invalid layer number: %layer%</red>"
+      err_layer_out_of_range: "<red>Layer out of range</red>"
+      current_layer: "<gray>Current layer: <white>%current%/%max%</white></gray>"
+      current_position: "<gray>Current position: <white>%x%, %y%, %z%</white></gray>"
+      hint_layer_command: "<gray>Use /ml preview layer up/down to switch layers</gray>"
+      progress: "<gray>Progress: <white>%correct%/%total%</white> <green>%completed%</green></gray>"
+      completed: "<green>Structure %structure_id% completed!</green>"
+      err_controller_broken: "<red>Controller block destroyed, preview cancelled</red>"
+      err_not_found: "<red>Structure not found: %structure_id%</red>"
+      hint_start_preview: "<gray>Use /ml preview show <ID> to start a preview</gray>"
+      will_expire: "<gray>Preview will disappear in 10 seconds</gray>"
+      cancelled: "<green>Preview cancelled</green>"
+      err_create_failed: "<red>Failed to create preview</red>"
+
+      # Summary overlay
+      summary_title: "<yellow>========== Build Site Preview ==========</yellow>"
+      summary_blueprint: "<gray>Blueprint:</gray> <white>%blueprint_id%</white>"
+      summary_facing: "<gray>Facing:</gray> <white>%facing%</white>"
+      summary_range: "<gray>Range:</gray> <white>%width% x %height% x %depth%</white>"
+      summary_position: "<gray>Position:</gray> <white>%min% ~ %max%</white>"
+      summary_valid: "<green>✓ Validation passed, can place</green>"
+      summary_errors: "<red>✗ Detected %count% issues:</red>"
+      summary_error_item: "<red>- %message%</red>"
+      summary_warning: "<yellow>⚠ Warnings:</yellow>"
+      summary_warning_item: "<yellow>- %message%</yellow>"
+      summary_confirm: "<gray>Right-click to confirm, sneak+right-click to cancel</gray>"
+      summary_expire: "<gray>Preview will auto-cancel in <red>10 seconds</red> </gray>"
+      summary_footer: "<yellow>==============================</yellow>"
+      timeout_cancelled: "<red>[MonolithLib] Preview timed out and was cancelled</red>"
+      timeout_countdown: "<yellow>Preview will auto-cancel in <red>%countdown%s</red></yellow>"
+
+      # Internal / code-level messages
+      err_empty_stage: "<red>[MonolithLib] Blueprint '%id%' has empty assembly stage, cannot preview</red>"
+      build_finished: "<green>[MonolithLib] Blueprint construction finished!</green>"
+      controller_broken_cancel: "<red>[MonolithLib] Controller destroyed, preview cancelled</red>"
+      timeout_auto_cancel: "<yellow>[MonolithLib] Preview timed out (10s), auto-cancelled</yellow>"
+      structure_completed: "<green>[MonolithLib] Structure %id% completed!</green>"
+      structure_ctrl_broken: "<red>[MonolithLib] Controller destroyed, preview cancelled</red>"
+
+    # ─── Builder (auto-construction engine) ───
+    builder:
+      err_world_unloaded: "<red>[MonolithLib] World not loaded!</red>"
+      err_conflicting_blocks: "<red>[MonolithLib] Conflicting blocks detected in construction area!</red>"
+      conflict_positions: "<gray>Conflict positions: <white>%positions%</white></gray>"
+      more_conflicts: "<gray>... and %count% more conflict positions</gray>"
+      err_insufficient_materials: "<red>[MonolithLib] Insufficient materials!</red>"
+      missing_material: "<gray>- %material%: missing %count%</gray>"
+      err_world_unloaded_cancelled: "<red>[MonolithLib] World unloaded, construction cancelled</red>"
+      progress: "<green>[MonolithLib] Building progress: %placed%/%total% (%progress%)</green>"
+      start_build: "<green>[MonolithLib] Starting construction: %blueprint_id%</green>"
+      build_info: "<gray>Total %count% blocks, placing 500 per tick</gray>"
+      cancelled: "<yellow>[MonolithLib] Construction cancelled</yellow>"
+      complete: "<green>[MonolithLib] Construction complete!</green>"
+      structure_info: "<gray>Structure: <white>%blueprint_id%</white></gray>"
+
+    # ─── Structure (multiblock lifecycle events) ───
+    structure:
+      formed: "<green>Structure %structure_id% has been formed!</green>"
+      broken: "<red>Structure %structure_id% has been broken!</red>"
+      err_not_found: "<red>Structure not found: %structure_id%</red>"
+      warn_no_blocks: "<yellow>Warning: This structure has no blocks defined!</yellow>"
+      hint_add_blocks: "<gray>Please add a blocks section in the YAML config</gray>"
+      controller_detected: "<green>Controller detected: %key%</green>"
+      associated_structure: "<gray>Associated structure: %structure_id%</gray>"
+      block_count: "<gray>Block count: %count%</gray>"
+      slots: "<gray>Slots: %slots%</gray>"
+      custom_data: "<gray>Custom data: %count% items</gray>"
+
+    # ─── Blueprint Table (crafting GUI) ───
+    blueprint_table:
+      craft_success: "<green>[Blueprint Table] Successfully crafted blueprint!</green>"
+      gui_title: "Blueprint Table"
+
+    # ─── Test module (debug messages) ───
+    test:
+      controller_detected: "<gray>[MLTest] Detected test_controller -> test_simple_3x3</gray>"
+      furnace_detected: "<gray>[MLTest] Detected furnace_core -> test_loose_furnace</gray>"
+      machine_detected: "<gray>[MLTest] Detected machine_core -> test_rebar_machine</gray>"
+      rebar_required: "<aqua>[MLTest] This structure requires Rebar components!</aqua>"
+      custom_detected: "<gray>[MLTest] Detected custom_controller</gray>"
+      custom_hint: "<yellow>[MLTest] This is a universal controller, configure the corresponding structure in YAML</yellow>"
+      preview_started: "<green>Preview started: %structure_id%</green>"
+
+    # ─── Rebar integration status ───
+    rebar:
+      integration_enabled: "<green>[MonolithLib] Rebar integration enabled</green>"
+      integration_disabled: "<yellow>[MonolithLib] Rebar not detected, skipping integration</yellow>"
+      err_integration_failed: "<red>[MonolithLib] Rebar initialization failed: %error%</red>"
+
+    # ─── I/O operations (console/log level) ───
+    io:
+      imported: "Imported blueprint: %name% (%count% blocks)"
+      rebuilt: "Rebuilt product: %name%"
+      loaded_standalone: "Loaded standalone product: %name%"
+      err_load_failed: "Failed to load .mnb file: %file% - %error%"
+      err_save_failed: "Failed to save .mnb file: %file% - %error%"
+
+    # ─── Initialization lifecycle (console/log level) ───
+    init:
+      starting: "[MonolithLib] Initializing..."
+      complete: "[MonolithLib] Initialization complete! Version: %version%"
+      shutting_down: "[MonolithLib] Shutting down..."
+      shutdown_complete: "[MonolithLib] Shutdown complete"
+      registering: "[MonolithLib] Registered blueprint: %id% (%size%, %count% non-air blocks)"
+      loaded_total: "[MonolithLib] Total blueprints loaded: %count%"
+      test_module_init: "[MonolithLib][Test] Initializing test module..."
+      test_module_complete: "[MonolithLib][Test] Test module initialized"
+      test_structures: "[MonolithLib][Test] Registered %count% test structures"
+      test_blocks: "[MonolithLib][Test] Registered %count% test Rebar blocks"
+      restored_sites: "[MonolithLib] Restored %count% persisted build sites"
