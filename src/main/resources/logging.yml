@@ -1,0 +1,6 @@
+monolith:
+  logging:
+    level: INFO
+    color: true
+    full-stacktrace: false
+    timestamp: true
