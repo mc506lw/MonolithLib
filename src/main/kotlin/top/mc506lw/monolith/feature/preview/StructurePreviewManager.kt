@@ -4,6 +4,7 @@ import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
+import top.mc506lw.monolith.common.I18n
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.transform.Facing
 import top.mc506lw.rebar.MonolithLib
@@ -28,7 +29,7 @@ object StructurePreviewManager {
 
         val assembledShape = blueprint.assembledShape
         if (assembledShape.blocks.isEmpty()) {
-            player.sendMessage("§c[MonolithLib] 蓝图 ${blueprint.id} 的成型阶段为空，无法预览")
+            player.sendMessage(I18n.Message.Preview.errEmptyStage(blueprint.id))
             Bukkit.getLogger().warning("[Preview] 蓝图 ${blueprint.id} assembledShape 为空，blockCount=${blueprint.blockCount}")
             return null
         }
@@ -77,11 +78,11 @@ object StructurePreviewManager {
             
             when (result) {
                 PreviewSession.UpdateResult.COMPLETED -> {
-                    p.sendMessage("§a[MonolithLib] §f蓝图构建完成！")
+                    p.sendMessage(I18n.Message.Preview.buildFinished)
                     cancelPreview(p)
                 }
                 PreviewSession.UpdateResult.CONTROLLER_BROKEN -> {
-                    p.sendMessage("§c[MonolithLib] §f控制器已被破坏，预览取消")
+                    p.sendMessage(I18n.Message.Preview.controllerBrokenCancel)
                     cancelPreview(p)
                 }
                 PreviewSession.UpdateResult.STOPPED -> {
@@ -131,7 +132,7 @@ object StructurePreviewManager {
             sessionCreatedAt.remove(playerId)
             session?.stop()
             val player = Bukkit.getPlayer(playerId)
-            player?.sendMessage("§e[MonolithLib] 预览已超时自动取消 (10秒)")
+            player?.sendMessage(I18n.Message.Preview.timeoutAutoCancel)
             cancelled++
         }
         

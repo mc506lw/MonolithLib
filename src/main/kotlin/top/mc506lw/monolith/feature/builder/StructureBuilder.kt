@@ -7,6 +7,7 @@ import org.bukkit.Sound
 import org.bukkit.block.data.BlockData
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
+import top.mc506lw.monolith.common.I18n
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.validation.predicate.Predicate
@@ -119,20 +120,20 @@ class StructureBuilder(
         val checkResult = canBuild()
         when (checkResult) {
             is BuildCheckResult.WORLD_UNLOADED -> {
-                player.sendMessage("§c[MonolithLib] 世界未加载!")
+                player.sendMessage(I18n.Message.Builder.errWorldUnloaded)
                 return false
             }
             is BuildCheckResult.CONFLICTS -> {
-                player.sendMessage("§c[MonolithLib] 建造区域有冲突方块!")
-                player.sendMessage("§7冲突位置: ${checkResult.conflicts.take(5).joinToString { "(${it.x}, ${it.y}, ${it.z})" }}")
+                player.sendMessage(I18n.Message.Builder.errConflictingBlocks)
+                player.sendMessage(I18n.Message.Builder.conflictPositions(checkResult.conflicts.take(5).joinToString { "(${it.x}, ${it.y}, ${it.z})" }))
                 if (checkResult.conflicts.size > 5) {
-                    player.sendMessage("§7... 还有 ${checkResult.conflicts.size - 5} 个冲突位置")
+                    player.sendMessage(I18n.Message.Builder.moreConflicts(checkResult.conflicts.size - 5))
                 }
                 return false
             }
             is BuildCheckResult.MISSING_MATERIALS -> {
                 val missing = checkResult.missing
-                player.sendMessage("§c[MonolithLib] 材料不足!")
+                player.sendMessage(I18n.Message.Builder.errInsufficientMaterials)
                 missing.forEach { (material, count) ->
                     player.sendMessage("  §7- ${material.name}: 缺少 $count 个")
                 }
@@ -160,7 +161,7 @@ class StructureBuilder(
                 
                 val world = controllerLocation.world
                 if (world == null) {
-                    player.sendMessage("§c[MonolithLib] 世界已卸载，建造取消")
+                    player.sendMessage(I18n.Message.Builder.errWorldUnloadedCancelled)
                     cancelBuild()
                     return
                 }
@@ -195,15 +196,15 @@ class StructureBuilder(
                 
                 if (placed % 500 == 0 || placed == total) {
                     val progress = (placed * 100 / total)
-                    player.sendMessage("§a[MonolithLib] 建造进度: $placed/$total ($progress%)")
+                    player.sendMessage(I18n.Message.Builder.progress(placed, total, "$progress%"))
                 }
             }
         }
         
         buildTask?.runTaskTimer(MonolithLib.instance, 1L, 1L)
         
-        player.sendMessage("§a[MonolithLib] 开始建造: ${blueprint.id}")
-        player.sendMessage("§7总共 ${blocksToPlace.size} 个方块，每次建造 500 个")
+        player.sendMessage(I18n.Message.Builder.startBuild(blueprint.id))
+        player.sendMessage(I18n.Message.Builder.buildInfo(blocksToPlace.size))
         
         return true
     }
@@ -211,7 +212,7 @@ class StructureBuilder(
     fun cancelBuild() {
         buildTask?.cancel()
         isBuilding = false
-        player.sendMessage("§e[MonolithLib] 建造已取消")
+        player.sendMessage(I18n.Message.Builder.cancelled)
     }
     
     private fun consumeMaterial(material: Material) {
@@ -249,8 +250,8 @@ class StructureBuilder(
     private fun finishBuild() {
         isBuilding = false
         
-        player.sendMessage("§a[MonolithLib] 建造完成!")
-        player.sendMessage("§7结构: ${blueprint.id}")
+        player.sendMessage(I18n.Message.Builder.complete)
+        player.sendMessage(I18n.Message.Builder.structureInfo(blueprint.id))
         
         controllerLocation.world?.playSound(
             controllerLocation,

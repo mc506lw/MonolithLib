@@ -38,11 +38,11 @@ class SelectionWand(stack: org.bukkit.inventory.ItemStack) : RebarItem(stack), R
         
         val STACK: org.bukkit.inventory.ItemStack by lazy {
             ItemStackBuilder.rebar(Material.BLAZE_ROD, KEY)
-                .name(Component.text("\u00a7eMonolith 选区魔杖"))
+                .name(Component.text("Monolith ", NamedTextColor.YELLOW).append(Component.text("选区魔杖", NamedTextColor.WHITE)))
                 .lore(listOf(
-                    Component.text("  \u00a77左键方块设置 Pos1", NamedTextColor.GRAY),
-                    Component.text("  \u00a77右键方块设置 Pos2", NamedTextColor.GRAY),
-                    Component.text("  \u00a77然后使用 /ml save <名称> 保存", NamedTextColor.GRAY)
+                    Component.text("  左键方块设置 Pos1", NamedTextColor.GRAY),
+                    Component.text("  右键方块设置 Pos2", NamedTextColor.GRAY),
+                    Component.text("  然后使用 /ml save <名称> 保存", NamedTextColor.GRAY)
                 ))
                 .build()
         }

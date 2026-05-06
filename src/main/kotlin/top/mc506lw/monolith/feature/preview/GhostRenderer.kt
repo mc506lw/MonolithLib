@@ -4,6 +4,7 @@ import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
+import top.mc506lw.monolith.common.I18n
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.transform.CoordinateTransform
 import top.mc506lw.monolith.core.transform.Facing
@@ -163,11 +164,11 @@ class GhostRenderer(private val plugin: MonolithLib) {
             
             when (result) {
                 PreviewSession.UpdateResult.COMPLETED -> {
-                    player.sendMessage("§a[MonolithLib] 结构 ${session.structureId} 已完成!")
+                    player.sendMessage(I18n.Message.Preview.structureCompleted(session.structureId))
                     toRemove.add(sessionId)
                 }
                 PreviewSession.UpdateResult.CONTROLLER_BROKEN -> {
-                    player.sendMessage("§c[MonolithLib] 控制器方块已被破坏，预览已取消")
+                    player.sendMessage(I18n.Message.Preview.structureCtrlBroken)
                     toRemove.add(sessionId)
                 }
                 PreviewSession.UpdateResult.STOPPED -> {
