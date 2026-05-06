@@ -6,6 +6,7 @@ import org.bukkit.World
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
 import top.mc506lw.monolith.api.MonolithAPI
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.transform.Facing
@@ -16,7 +17,9 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object BuildSiteManager {
-    
+
+    private val logger = MonolithLogger.getLogger("BuildSite")
+
     private val sites = ConcurrentHashMap<UUID, BuildSite>()
     private val locationIndex = ConcurrentHashMap<String, UUID>()
     private val chunkSites = ConcurrentHashMap<String, MutableSet<UUID>>()
@@ -276,16 +279,16 @@ object BuildSiteManager {
                 try {
                     restoreSiteFromData(siteData)
                 } catch (e: Exception) {
-                    println("[MonolithLib] 加载工地失败: ${e.message}")
+                    logger.warn(e) { "Failed to load build site" }
                 }
             }
-            
-            println("[MonolithLib] 已加载 ${loadedSites.size} 个存档工地")
+
+            logger.info { "Loaded ${loadedSites.size} persisted build sites" }
         } catch (e: Exception) {
-            println("[MonolithLib] 读取工地存档失败: ${e.message}")
+            logger.error(e) { "Failed to read build site saves" }
         }
     }
-    
+
     private fun restoreSiteFromData(data: Map<String, Any>) {
         val idStr = data["id"] as? String ?: return
         val blueprintId = data["blueprint_id"] as? String ?: return
@@ -303,7 +306,7 @@ object BuildSiteManager {
         val api = try { MonolithAPI.getInstance() } catch (_: Exception) { return }
         val blueprint = api.registry.get(blueprintId)
         if (blueprint == null) {
-            println("[MonolithLib] 警告: 蓝图 $blueprintId 已不存在，工地 $idStr 将被跳过 (位置: $worldName,$x,$y,$z)")
+            logger.warn { "Blueprint '$blueprintId' no longer exists, build site $idStr will be skipped (location: $worldName,$x,$y,$z)" }
             return
         }
 
@@ -397,7 +400,7 @@ object BuildSiteManager {
             
             saveFile.writeText(lines.joinToString("\n"))
         } catch (e: Exception) {
-            println("[MonolithLib] 保存工地数据失败: ${e.message}")
+            logger.error(e) { "Failed to save build site data" }
         }
     }
 }

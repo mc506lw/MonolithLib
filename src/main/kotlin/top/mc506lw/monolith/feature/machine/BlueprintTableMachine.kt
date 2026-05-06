@@ -7,15 +7,18 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.ShapelessRecipe
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.rebar.MonolithLib
 
 object BlueprintTableMachine {
+
+    private val logger = MonolithLogger.getLogger("Machine")
 
     fun registerAll() {
         registerBlockWithItem(BlueprintTableBlock.KEY, BlueprintTableBlock.MATERIAL, BlueprintTableBlock::class.java)
         registerCraftingRecipe()
 
-        println("[MonolithLib Machine] 已注册蓝图桌机器")
+        logger.info { "Blueprint table machine registered" }
     }
 
     private fun registerBlockWithItem(key: NamespacedKey, material: Material, blockClass: Class<out RebarBlock>) {
