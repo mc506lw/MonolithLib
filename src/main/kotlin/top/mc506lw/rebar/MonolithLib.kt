@@ -45,7 +45,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         lateinit var instance: MonolithLib
             private set
 
-        private val logger = MonolithLogger.getLogger("Core")
+        private val moduleLogger = MonolithLogger.getLogger("Core")
     }
     
     override val javaPlugin: JavaPlugin get() = this
@@ -75,7 +75,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         instance = this
 
         LogConfig.load(dataFolder)
-        logger.info { "Initializing MonolithLib v${pluginMeta.version}..." }
+        moduleLogger.info { "Initializing MonolithLib v${pluginMeta.version}..." }
 
         registerWithRebar()
         
@@ -89,11 +89,11 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         initMachines()
         SelectionManager.init()
         
-        logger.info { "Initialization complete! Version: ${pluginMeta.version}" }
+        moduleLogger.info { "Initialization complete! Version: ${pluginMeta.version}" }
     }
 
     override fun onDisable() {
-        logger.info { "Shutting down..." }
+        moduleLogger.info { "Shutting down..." }
         
         scheduler.shutdown()
         previewModule.onDisable()
@@ -107,7 +107,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         top.mc506lw.monolith.feature.buildsite.LitematicaModeManager.cleanup()
         SelectionManager.shutdown()
 
-        logger.info { "Shutdown complete" }
+        moduleLogger.info { "Shutdown complete" }
     }
     
     override fun onCommand(sender: CommandSender, command: Command, label: String, args: Array<out String>): Boolean {
@@ -151,7 +151,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         
         val siteCount = BuildSiteManager.getAllActiveSites().size
         if (siteCount > 0) {
-            logger.info { "Restored $siteCount persisted build sites" }
+            moduleLogger.info { "Restored $siteCount persisted build sites" }
             top.mc506lw.monolith.feature.buildsite.EasyBuildManager.rebuildIndex()
         }
         
@@ -179,7 +179,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         try {
             TestModule.init()
         } catch (e: Exception) {
-            logger.warn(e) { "Test module initialization failed" }
+            moduleLogger.warn { "Test module initialization failed: ${e.message}" }
         }
     }
 
@@ -188,13 +188,13 @@ class MonolithLib : JavaPlugin(), RebarAddon {
             BlueprintTableMachine.registerAll()
             VirtualDisplayAnchorRegistry.register()
         } catch (e: Exception) {
-            logger.warn(e) { "Machine module initialization failed" }
+            moduleLogger.warn { "Machine module initialization failed: ${e.message}" }
         }
 
         try {
             io.github.pylonmc.rebar.item.RebarItem.register(SelectionWand::class.java, SelectionWand.STACK, SelectionWand.KEY)
         } catch (e: Exception) {
-            logger.warn(e) { "Selection wand initialization failed" }
+            moduleLogger.warn { "Selection wand initialization failed: ${e.message}" }
         }
     }
 
@@ -203,10 +203,10 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
         blueprints.forEach { blueprint ->
             api.registry.register(blueprint)
-            logger.info { "Registered blueprint: ${blueprint.id} (${blueprint.sizeX}x${blueprint.sizeY}x${blueprint.sizeZ}, ${blueprint.blockCount} non-air blocks)" }
+            moduleLogger.info { "Registered blueprint: ${blueprint.id} (${blueprint.sizeX}x${blueprint.sizeY}x${blueprint.sizeZ}, ${blueprint.blockCount} non-air blocks)" }
         }
 
-        logger.info { "Total blueprints loaded: ${blueprints.size}" }
+        moduleLogger.info { "Total blueprints loaded: ${blueprints.size}" }
     }
 
     private fun sendHelp(sender: CommandSender) {
@@ -326,7 +326,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         }
 
         StructurePreviewManager.cancelPreview(sender)
-        sender.sendMessage(I18n.Message.Preview.previewCancelled)
+        sender.sendMessage(I18n.Message.Preview.cancelled)
     }
 
     private fun handleBuildDomain(sender: CommandSender, args: List<String>) {
@@ -387,7 +387,7 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         )
         
         if (builder == null) {
-            sender.sendMessage(I18n.Message.Command.buildFailed)
+            sender.sendMessage(I18n.Message.Command.errBuildFailed)
         }
     }
 
@@ -508,10 +508,10 @@ class MonolithLib : JavaPlugin(), RebarAddon {
         
         val blueprint = api.registry.get(blueprintId)
         if (blueprint == null) {
-            sender.sendMessage(I18n.Message.Command.Info.blueprintNotFound(blueprintId))
+            sender.sendMessage(I18n.Message.Command.Info.bpNotFound(blueprintId))
             return
         }
-        sender.sendMessage(I18n.Message.Command.Info.blueprintTitle(blueprint.id))
+        sender.sendMessage(I18n.Message.Command.Info.bpTitle(blueprint.id))
         sender.sendMessage(I18n.Message.Command.Info.size(blueprint.sizeX, blueprint.sizeY, blueprint.sizeZ))
         sender.sendMessage(I18n.Message.Command.Info.blockCount(blueprint.blockCount))
         if (blueprint.meta.displayName != null) {
@@ -535,14 +535,14 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
         val blueprintId = args.getOrNull(0)
         if (blueprintId == null) {
-            sender.sendMessage(I18n.Message.Command.Blueprint.noId)
-            sender.sendMessage(I18n.Message.Command.Blueprint.hint)
+            sender.sendMessage(I18n.Message.Command.Bp.noId)
+            sender.sendMessage(I18n.Message.Command.Bp.hint)
             return
         }
 
         val blueprint = api.registry.get(blueprintId)
         if (blueprint == null) {
-            sender.sendMessage(I18n.Message.Command.Blueprint.notFound(blueprintId))
+            sender.sendMessage(I18n.Message.Command.Bp.notFound(blueprintId))
             return
         }
 
@@ -550,11 +550,11 @@ class MonolithLib : JavaPlugin(), RebarAddon {
 
         val leftover = sender.inventory.addItem(item)
         if (leftover.isNotEmpty()) {
-            sender.sendMessage(I18n.Message.Command.Blueprint.inventoryFull)
+            sender.sendMessage(I18n.Message.Command.Bp.inventoryFull)
             sender.world.dropItemNaturally(sender.location, item)
         }
 
-        sender.sendMessage(I18n.Message.Command.Blueprint.given(blueprintId))
+        sender.sendMessage(I18n.Message.Command.Bp.given(blueprintId))
         sender.sendMessage(I18n.Message.Common.hintTabComplete)
     }
 

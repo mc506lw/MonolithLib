@@ -47,10 +47,10 @@ object LitematicaModeManager {
         }
         
         if (BuildSitePreviewManager.hasActivePreview(player)) {
-            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.hasActivePreviewBlockMode))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.errHasActivePreview))
             return null
         }
-        
+
         val nearestSite = findNearestSite(player)
         if (nearestSite == null) {
             return null
@@ -76,8 +76,7 @@ object LitematicaModeManager {
         }
         
         if (BuildSitePreviewManager.hasActivePreview(player)) {
-            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.hasActivePreviewBlockMode))
-            return null
+            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.errHasActivePreview))
         }
         
         val nearestSite = findNearestSite(player)
@@ -178,10 +177,10 @@ object LitematicaModeManager {
                 cancelAwayTask(playerId)
                 playerStates.remove(playerId)
                 
-                val msg = I18n.Message.Litematica.modeAutoDisabled(modes.joinToString("、"))
+                val msg = I18n.Message.BuildMode.errModeAutoDisabled(modes.joinToString("、"))
                 player.sendMessage(legacy.serialize(msg))
             } else if (countdown <= 10 && countdown % 5 == 0) {
-                val msg = I18n.Message.Litematica.leftRangeCountdown(countdown)
+                val msg = I18n.Message.BuildMode.leftRangeCountdown(countdown)
                 player.sendMessage(legacy.serialize(msg))
             }
         }, 20L, 20L)

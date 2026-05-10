@@ -17,6 +17,8 @@ import org.bukkit.util.Transformation
 import org.joml.AxisAngle4f
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
 import top.mc506lw.monolith.common.I18n
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Blueprint
@@ -140,6 +142,7 @@ class BuildSite(
     private val playerRenderCache = ConcurrentHashMap<UUID, Set<Vector3i>>()
     private var coreGlassPlaced: Boolean = false
     private var coreItemDisplay: ItemDisplay? = null
+    private var displayGroup: top.mc506lw.monolith.feature.display.DisplayEntityGroup? = null
 
     val backupData: MutableMap<Vector3i, BlockData> = ConcurrentHashMap()
 
@@ -524,114 +527,55 @@ class BuildSite(
             return
         }
 
-        val latestBlueprint = top.mc506lw.monolith.api.MonolithAPI.getInstance().registry.get(blueprintId)
-        val effectiveDisplayOffset = latestBlueprint?.meta?.displayOffset ?: blueprint.meta.displayOffset
+        Bukkit.getLogger().info("[BuildSite] spawnDisplayEntitiesViaAnchor: 创建展示实体组, 实体数=${displayEntityBlocks.size}")
 
-        val controllerPos = Vector3i(
-            anchorLocation.blockX,
-            anchorLocation.blockY,
-            anchorLocation.blockZ
-        )
+        try {
+            val latestBlueprint = top.mc506lw.monolith.api.MonolithAPI.getInstance().registry.get(blueprintId)
+            val effectiveDisplayOffset = latestBlueprint?.meta?.displayOffset ?: blueprint.meta.displayOffset
 
-        val rotationSteps = facing.rotationSteps
-
-        Bukkit.getLogger().info("[BuildSite] spawnDisplayEntitiesViaAnchor: 通过Rebar Anchor管理${displayEntityBlocks.size}个实体, 旋转步数=$rotationSteps")
-
-        val groupCenter = calculateGroupCenter(displayEntityBlocks)
-        Bukkit.getLogger().info("[BuildSite] 组质心=(${String.format("%.4f", groupCenter.x)}, ${String.format("%.4f", groupCenter.y)}, ${String.format("%.4f", groupCenter.z)})")
-
-        var successCount = 0
-        var failCount = 0
-
-        for ((index, entity) in displayEntityBlocks.withIndex()) {
-            try {
-                val entityName = "${top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor.ENTITY_PREFIX}$index"
-
-                if (anchor.isHeldEntityPresent(entityName)) {
-                    Bukkit.getLogger().info("[BuildSite]   [$index] 实体已存在, 跳过: $entityName")
-                    successCount++
-                    continue
-                }
-
-                val relOffset = org.joml.Vector3f(
-                    entity.translation.x - groupCenter.x,
-                    entity.translation.y - groupCenter.y,
-                    entity.translation.z - groupCenter.z
-                )
-
-                val rotatedOffset = rotateRelativeOffsetForGroup(relOffset, rotationSteps)
-
-                val finalTrans = org.joml.Vector3f(
-                    groupCenter.x + rotatedOffset.x + effectiveDisplayOffset.x,
-                    groupCenter.y + rotatedOffset.y + effectiveDisplayOffset.y,
-                    groupCenter.z + rotatedOffset.z + effectiveDisplayOffset.z
-                )
-
-                val baseX = anchorLocation.x.toDouble()
-                val baseY = anchorLocation.y.toDouble()
-                val baseZ = anchorLocation.z.toDouble()
-
-                val worldX = baseX + finalTrans.x
-                val worldY = baseY + finalTrans.y
-                val worldZ = baseZ + finalTrans.z
-
-                val spawnLoc = Location(anchorLocation.world, worldX, worldY, worldZ)
-
-                val leftRotation = applyFacingRotationForAnchor(entity.rotation, rotationSteps)
-
-                val scaleX = when (rotationSteps) { 1, 3 -> entity.scale.z else -> entity.scale.x }
-                val scaleZ = when (rotationSteps) { 1, 3 -> entity.scale.x else -> entity.scale.z }
-
-                val transformMatrix = org.joml.Matrix4f()
-                    .translation(0f, 0f, 0f)
-                    .rotate(leftRotation)
-                    .scale(scaleX, entity.scale.y, scaleZ)
-
-                val blockDisplay = io.github.pylonmc.rebar.entity.display.BlockDisplayBuilder()
-                    .material(entity.blockData!!.material)
-                    .transformation(transformMatrix)
-                    .build(spawnLoc)
-
-                anchor.addEntity(entityName, blockDisplay)
-                successCount++
-
-                if (index < 3 || index == displayEntityBlocks.size - 1) {
-                    Bukkit.getLogger().info("[BuildSite]   [$index/${displayEntityBlocks.size}] 注册到Anchor: $entityName | 世界坐标=($worldX, $worldY, $worldZ)")
-                }
-            } catch (e: Exception) {
-                Bukkit.getLogger().warning("[BuildSite] spawnDisplayEntitiesViaAnchor: 实体[$index]生成失败: ${e.message}")
-                e.printStackTrace()
-                failCount++
+            val rotationSteps = facing.rotationSteps
+            val groupRotation = when (rotationSteps) {
+                1 -> org.joml.Quaternionf().rotateY(kotlin.math.PI.toFloat() / 2f)
+                2 -> org.joml.Quaternionf().rotateY(kotlin.math.PI.toFloat())
+                3 -> org.joml.Quaternionf().rotateY(-kotlin.math.PI.toFloat() / 2f)
+                else -> org.joml.Quaternionf()
             }
-        }
 
-        Bukkit.getLogger().info("[BuildSite] spawnDisplayEntitiesViaAnchor: ✅ 完成! 成功=$successCount, 失败=$failCount (全部由Rebar Anchor管理)")
-    }
+            val offsetVec = org.joml.Vector3f(
+                effectiveDisplayOffset.x.toFloat(),
+                effectiveDisplayOffset.y.toFloat(),
+                effectiveDisplayOffset.z.toFloat()
+            )
 
-    private fun calculateGroupCenter(entities: List<top.mc506lw.monolith.core.model.DisplayEntityData>): org.joml.Vector3f {
-        if (entities.isEmpty()) return org.joml.Vector3f()
-        
-        var cx = 0f
-        var cy = 0f
-        var cz = 0f
-        
-        for (e in entities) {
-            cx += e.translation.x
-            cy += e.translation.y
-            cz += e.translation.z
-        }
-        
-        return org.joml.Vector3f(cx / entities.size, cy / entities.size, cz / entities.size)
-    }
+            Bukkit.getLogger().info("[BuildSite] displayOffset=$effectiveDisplayOffset, rotationSteps=$rotationSteps")
+            Bukkit.getLogger().info("[BuildSite] groupRotation=${groupRotation.x}, ${groupRotation.y}, ${groupRotation.z}, ${groupRotation.w}")
 
-    private fun rotateRelativeOffsetForGroup(offset: org.joml.Vector3f, steps: Int): org.joml.Vector3f {
-        if (steps == 0) return offset
+            val group = top.mc506lw.monolith.feature.display.DisplayEntityGroup(
+                anchor = anchor,
+                centerLocation = anchorLocation,
+                displayOffset = offsetVec,
+                groupRotation = groupRotation
+            )
 
-        return when (steps % 4) {
-            1 -> org.joml.Vector3f(offset.z, offset.y, -offset.x)
-            2 -> org.joml.Vector3f(-offset.x, offset.y, -offset.z)
-            3 -> org.joml.Vector3f(-offset.z, offset.y, offset.x)
-            else -> org.joml.Vector3f(offset)
+            for ((index, entity) in displayEntityBlocks.withIndex()) {
+                if (index < 3) {
+                    Bukkit.getLogger().info("[BuildSite] entity[$index] rotation=(${entity.rotation.x}, ${entity.rotation.y}, ${entity.rotation.z}, ${entity.rotation.w})")
+                }
+                group.addBlockDisplay(
+                    name = "$index",
+                    blockData = entity.blockData!!,
+                    translation = entity.translation,
+                    scale = entity.scale,
+                    rotation = entity.rotation
+                )
+            }
+
+            this@BuildSite.displayGroup = group
+
+            Bukkit.getLogger().info("[BuildSite] spawnDisplayEntitiesViaAnchor: ✅ 展示实体组创建成功! 包含${group.getSize()}个实体")
+        } catch (e: Exception) {
+            Bukkit.getLogger().severe("[BuildSite] spawnDisplayEntitiesViaAnchor: ❌ 失败: ${e.message}")
+            e.printStackTrace()
         }
     }
 

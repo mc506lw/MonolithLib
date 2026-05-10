@@ -116,6 +116,7 @@ object I18n {
                 fun notFound(id: String) = translatable("chat.command.bp_not_found", arg("id", id))
                 val noId = translatable("chat.command.bp_no_id")
                 val hint = translatable("chat.command.bp_hint")
+                val inventoryFull = translatable("chat.command.bp_inventory_full")
             }
 
             object ErrUsage {

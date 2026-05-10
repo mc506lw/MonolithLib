@@ -4,12 +4,12 @@ import io.github.pylonmc.rebar.item.RebarItem
 import io.github.pylonmc.rebar.item.base.RebarBlockInteractor
 import io.github.pylonmc.rebar.item.builder.ItemStackBuilder
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.event.EventPriority
 import org.bukkit.event.block.Action
 import org.bukkit.event.player.PlayerInteractEvent
+import top.mc506lw.monolith.common.I18n
 import top.mc506lw.rebar.MonolithLib
 
 class SelectionWand(stack: org.bukkit.inventory.ItemStack) : RebarItem(stack), RebarBlockInteractor {
@@ -38,11 +38,11 @@ class SelectionWand(stack: org.bukkit.inventory.ItemStack) : RebarItem(stack), R
         
         val STACK: org.bukkit.inventory.ItemStack by lazy {
             ItemStackBuilder.rebar(Material.BLAZE_ROD, KEY)
-                .name(Component.text("Monolith ", NamedTextColor.YELLOW).append(Component.text("选区魔杖", NamedTextColor.WHITE)))
+                .name(I18n.translatable("item.selection_wand.name"))
                 .lore(listOf(
-                    Component.text("  左键方块设置 Pos1", NamedTextColor.GRAY),
-                    Component.text("  右键方块设置 Pos2", NamedTextColor.GRAY),
-                    Component.text("  然后使用 /ml save <名称> 保存", NamedTextColor.GRAY)
+                    I18n.translatable("item.selection_wand.lore.0"),
+                    I18n.translatable("item.selection_wand.lore.1"),
+                    I18n.translatable("item.selection_wand.lore.2")
                 ))
                 .build()
         }

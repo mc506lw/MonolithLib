@@ -25,8 +25,6 @@ dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
     compileOnly("io.github.pylonmc:rebar:0.36.2")
     compileOnly("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation("org.metamechanists:DisplayModelLib:35")
-    shadow("org.metamechanists:DisplayModelLib:35")
 }
 
 tasks {

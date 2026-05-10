@@ -161,7 +161,7 @@ object PrinterManager {
         val advancedCount = site.advanceToNextIncompleteLayer()
 
         if (advancedCount > 0) {
-            player.sendMessage(legacy.serialize(I18n.Message.Printer.layerCompleted(site.currentLayer)))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildMode.layerCompleted(site.currentLayer)))
             Bukkit.getLogger().info("[PrinterManager] checkAdvancement: 推进了" + advancedCount + "层，当前层=" + site.currentLayer)
 
             Bukkit.getScheduler().runTaskLater(MonolithLib.instance, Runnable {
@@ -179,24 +179,24 @@ object PrinterManager {
     }
     
     private fun startFinalPhase(site: BuildSite, player: Player) {
-        player.sendMessage(legacy.serialize(I18n.Message.Printer.allComplete))
+        player.sendMessage(legacy.serialize(I18n.Message.BuildMode.allComplete))
         
         val result = site.validateDetailed()
         
-        player.sendMessage(legacy.serialize(I18n.Message.Printer.progress(
+        player.sendMessage(legacy.serialize(I18n.Message.BuildMode.progress(
             (result.completionRate * 100).toInt(),
             result.matchedCount,
             result.totalCount
         )))
         
         if (result.needsFix) {
-            player.sendMessage(legacy.serialize(I18n.Message.Printer.needFix(result.blocksToFix.size)))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildMode.needFix(result.blocksToFix.size)))
             
             val world = site.anchorLocation.world
             if (world != null) {
                 val fixedCount = top.mc506lw.monolith.validation.AutoFixer.fixBlocksSync(result.blocksToFix, world)
                 if (fixedCount > 0) {
-                    player.sendMessage(legacy.serialize(I18n.Message.Printer.fixed(fixedCount)))
+                    player.sendMessage(legacy.serialize(I18n.Message.BuildMode.fixed(fixedCount)))
                 }
             }
         }
@@ -205,10 +205,10 @@ object PrinterManager {
         
         val rebarKey = site.coreRebarKey
         if (rebarKey != null) {
-            player.sendMessage(legacy.serialize(I18n.Message.Printer.shellComplete))
-            player.sendMessage(legacy.serialize(I18n.Message.Printer.shellController(rebarKey.key)))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildMode.shellComplete))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildMode.shellController(rebarKey.key)))
         } else {
-            player.sendMessage(legacy.serialize(I18n.Message.Printer.shellCompleteNoCore))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildMode.shellCompleteNoCore))
         }
         
         Bukkit.getScheduler().runTaskLater(MonolithLib.instance, Runnable {

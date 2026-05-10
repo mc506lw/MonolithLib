@@ -313,7 +313,7 @@ object BuiltMNBCompiler {
     ): List<DisplayEntityData> {
         if (steps == 0 || displayEntities.isEmpty()) return displayEntities
 
-        Bukkit.getLogger().info("[BuiltMNBCompiler] rotateDisplayEntities: 步数=$steps (只旋转position和blockData, translation由运行时处理), 实体数=${displayEntities.size}")
+        Bukkit.getLogger().info("[BuiltMNBCompiler] rotateDisplayEntities: 步数=$steps (只旋转position和blockData, translation/rotation/scale由运行时facing处理), 实体数=${displayEntities.size}")
 
         return displayEntities.mapIndexed { index, entity ->
             val rp = rotateCoordinate(entity.position, center, steps)

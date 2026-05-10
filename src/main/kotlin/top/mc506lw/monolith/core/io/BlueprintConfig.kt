@@ -365,7 +365,7 @@ object BlueprintConfigLoader {
     
     private fun parsePosition(str: String?): Vector3i? {
         if (str == null) return null
-        val parts = str.split(",").map { it.trim().toIntOrNull() ?: return null }
+        val parts = str.split(",").map { it.trim().toDoubleOrNull()?.toInt() ?: return null }
         if (parts.size != 3) return null
         return Vector3i(parts[0], parts[1], parts[2])
     }

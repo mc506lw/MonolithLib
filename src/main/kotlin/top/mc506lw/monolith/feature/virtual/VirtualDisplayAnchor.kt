@@ -24,6 +24,7 @@ class VirtualDisplayAnchor(
         val MATERIAL = Material.BARRIER
 
         const val ENTITY_PREFIX = "vde_"
+        const val DISPLAY_GROUP_KEY = "display_group"
     }
 
     override var disableBlockTextureEntity = true
@@ -35,6 +36,9 @@ class VirtualDisplayAnchor(
 
     override fun postLoad() {
         org.bukkit.Bukkit.getLogger().info("[VirtualDisplayAnchor] postLoad: 检查展示实体恢复, ${blockLocationStr}")
+        if (!isHeldEntityPresent(DISPLAY_GROUP_KEY)) {
+            org.bukkit.Bukkit.getLogger().warning("[VirtualDisplayAnchor] postLoad: 展示实体组丢失, 需要重新生成")
+        }
     }
 
     private val blockLocationStr get() = "pos=(${block.x},${block.y},${block.z})"

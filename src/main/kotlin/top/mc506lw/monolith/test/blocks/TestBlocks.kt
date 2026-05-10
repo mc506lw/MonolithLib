@@ -154,5 +154,6 @@ class CustomStructureController(
     companion object {
         val KEY = NamespacedKey(MonolithLib.instance, "custom_controller")
         val MATERIAL = Material.LODESTONE
+        private val logger = MonolithLogger.getLogger("CustomStructureController")
     }
 }

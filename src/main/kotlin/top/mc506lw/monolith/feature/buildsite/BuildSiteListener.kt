@@ -251,7 +251,7 @@ class BuildSiteListener : Listener {
 
         val site = BuildSiteManager.createSite(blueprint, targetLocation, facing)
         if (site == null) {
-            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.siteCreateFailed))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.errCreateFail))
             return
         }
 
@@ -267,15 +267,15 @@ class BuildSiteListener : Listener {
             player.sendMessage(legacy.serialize(I18n.Message.BuildSite.existingBlocks(existingCount)))
         }
 
-        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.siteCreated))
-        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.siteInfo(blueprintId, facing.name)))
-        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.siteLayers(site.totalLayers, site.currentLayer + 1)))
-        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.siteCoreHint))
+        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.created))
+        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.infoLine(blueprintId, facing.name)))
+        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.layersInfo(site.totalLayers, site.currentLayer + 1)))
+        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.hintCore))
 
         if (site.checkIfAllNonCoreLayersComplete()) {
             site.enterAwaitingCore()
             player.sendMessage(legacy.serialize(I18n.Message.BuildSite.allLayersComplete))
-            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.coreCannotPlace))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.errCoreBlocked))
         }
 
         site.renderForPlayer(player)
@@ -313,7 +313,7 @@ class BuildSiteListener : Listener {
 
             if (site.coreRebarKey != null && rebarItem.schema.key != site.coreRebarKey) {
                 Bukkit.getLogger().info("[MonolithLib] handleControllerActivation: 控制器key不匹配! 需要=${site.coreRebarKey}, 实际=${rebarItem.schema.key}")
-                player.sendMessage(legacy.serialize(I18n.Message.BuildSite.placeCorrectController))
+                player.sendMessage(legacy.serialize(I18n.Message.BuildSite.errWrongController))
                 return
             }
 
@@ -337,7 +337,7 @@ class BuildSiteListener : Listener {
         site.transitionToVirtual()
         site.markCompleted()
 
-        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.structureActivated))
+        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.activated))
         player.playSound(player.location, Sound.BLOCK_BEACON_ACTIVATE, 1.0f, 1.0f)
 
         EasyBuildManager.onSiteUpdated(site)
@@ -438,7 +438,7 @@ class BuildSiteListener : Listener {
 
         val revertedLayer = site.revertToBuilding()
         if (revertedLayer >= 0) {
-            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.buildBlockDestroyed(revertedLayer + 1)))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildSite.blockDestroyedRevert(revertedLayer + 1)))
         }
 
         site.renderForPlayer(player)
@@ -519,7 +519,7 @@ class BuildSiteListener : Listener {
             }
         }
 
-        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.structureDisassembled))
+        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.disassembled))
         player.playSound(player.location, Sound.BLOCK_BEACON_DEACTIVATE, 1.0f, 1.0f)
 
         EasyBuildManager.onSiteUpdated(site)
@@ -565,7 +565,7 @@ class BuildSiteListener : Listener {
             }
         }
 
-        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.siteCancelled))
+        player.sendMessage(legacy.serialize(I18n.Message.BuildSite.cancelledReturned))
 
         BuildSiteManager.removeSite(site.id)
         BuildSiteManager.saveAll()
@@ -585,7 +585,7 @@ class BuildSiteListener : Listener {
             if (site.isLastLayer() && site.isLayerFullyPlaced(site.currentLayer)) {
                 site.enterAwaitingCore()
                 player.sendMessage(legacy.serialize(I18n.Message.BuildSite.allLayersComplete))
-                player.sendMessage(legacy.serialize(I18n.Message.BuildSite.coreCannotPlace))
+                player.sendMessage(legacy.serialize(I18n.Message.BuildSite.errCoreBlocked))
 
                 scheduleRenderingUpdate(site)
                 EasyBuildManager.onSiteUpdated(site)
@@ -598,7 +598,7 @@ class BuildSiteListener : Listener {
             if (site.checkIfAllNonCoreLayersComplete()) {
                 site.enterAwaitingCore()
                 player.sendMessage(legacy.serialize(I18n.Message.BuildSite.allLayersComplete))
-                player.sendMessage(legacy.serialize(I18n.Message.BuildSite.coreCannotPlace))
+                player.sendMessage(legacy.serialize(I18n.Message.BuildSite.errCoreBlocked))
 
                 scheduleRenderingUpdate(site)
                 EasyBuildManager.onSiteUpdated(site)

@@ -94,7 +94,7 @@ class EasyBuildListener : Listener {
         val advancedCount = site.advanceToNextIncompleteLayer()
 
         if (advancedCount > 0) {
-            player.sendMessage(legacy.serialize(I18n.Message.EasyBuild.layerCompleted(site.currentLayer)))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildMode.layerCompleted(site.currentLayer)))
 
             Bukkit.getScheduler().runTaskLater(MonolithLib.instance, Runnable {
                 for (onlinePlayer in Bukkit.getOnlinePlayers()) {
@@ -105,7 +105,7 @@ class EasyBuildListener : Listener {
 
             BuildSiteManager.saveAll()
         } else {
-            player.sendMessage(legacy.serialize(I18n.Message.EasyBuild.allComplete))
+            player.sendMessage(legacy.serialize(I18n.Message.BuildMode.allComplete))
             site.enterAwaitingCore()
             EasyBuildManager.onSiteUpdated(site)
             BuildSiteManager.saveAll()
@@ -118,11 +118,11 @@ class EasyBuildListener : Listener {
 
             val rebarKey = site.coreRebarKey
             if (rebarKey != null) {
-                player.sendMessage(legacy.serialize(I18n.Message.BuildSite.shellCompleteController))
+                player.sendMessage(legacy.serialize(I18n.Message.BuildSite.shellDoneController))
                 player.sendMessage(legacy.serialize(I18n.Message.BuildSite.shellControllerKey(rebarKey.key)))
                 player.sendMessage(legacy.serialize(I18n.Message.BuildSite.shellCoreMarker))
             } else {
-                player.sendMessage(legacy.serialize(I18n.Message.BuildSite.shellCompleteNoController))
+                player.sendMessage(legacy.serialize(I18n.Message.BuildSite.shellDoneNoController))
                 player.sendMessage(legacy.serialize(I18n.Message.BuildSite.shellCoreMarker))
             }
         }
