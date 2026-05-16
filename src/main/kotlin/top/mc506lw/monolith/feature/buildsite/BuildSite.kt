@@ -33,6 +33,7 @@ import top.mc506lw.monolith.validation.ValidationEngine
 import top.mc506lw.monolith.validation.predicate.Predicate
 import top.mc506lw.monolith.validation.predicate.Predicates
 import top.mc506lw.monolith.validation.predicate.RotatedPredicate
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -533,13 +534,39 @@ class BuildSite(
             val latestBlueprint = top.mc506lw.monolith.api.MonolithAPI.getInstance().registry.get(blueprintId)
             val effectiveDisplayOffset = latestBlueprint?.meta?.displayOffset ?: blueprint.meta.displayOffset
 
+            Bukkit.getLogger().info("========== [BuildSite] 旋转系统调试信息 ==========")
+            Bukkit.getLogger().info("[BuildSite] 📍 玩家视角:")
+            Bukkit.getLogger().info("   yaw=${anchorLocation.yaw}°, pitch=${anchorLocation.pitch}°")
+
+            val playerFacing = getPlayerFacingDirection(anchorLocation.yaw)
+            Bukkit.getLogger().info("   玩家面朝: $playerFacing")
+
+            val facing = top.mc506lw.monolith.core.transform.Facing.fromYaw(anchorLocation.yaw)
             val rotationSteps = facing.rotationSteps
-            val groupRotation = when (rotationSteps) {
-                1 -> org.joml.Quaternionf().rotateY(kotlin.math.PI.toFloat() / 2f)
-                2 -> org.joml.Quaternionf().rotateY(kotlin.math.PI.toFloat())
-                3 -> org.joml.Quaternionf().rotateY(-kotlin.math.PI.toFloat() / 2f)
-                else -> org.joml.Quaternionf()
+            val baseYaw = top.mc506lw.monolith.feature.display.DisplayTransformSystem.facingToYaw(facing)
+
+            val config = loadBlueprintConfig(blueprintId)
+            val assembledRotation = config?.assembledRotation ?: 0
+            val initialYaw = baseYaw + assembledRotation
+
+            Bukkit.getLogger().info("[BuildSite] 🏗️  工地朝向:")
+            Bukkit.getLogger().info("   Facing枚举: $facing")
+            Bukkit.getLogger().info("   rotationSteps: $rotationSteps")
+            Bukkit.getLogger().info("   基础旋转 (玩家朝向): ${baseYaw}°")
+            Bukkit.getLogger().info("   蓝图配置 assembled: ${assembledRotation}°")
+            Bukkit.getLogger().info("   最终 initialYaw: ${initialYaw}° (将应用于展示实体组)")
+
+            Bukkit.getLogger().info("[BuildSite] 📋 蓝图配置:")
+            Bukkit.getLogger().info("   blueprintId: $blueprintId")
+            Bukkit.getLogger().info("   displayOffset: $effectiveDisplayOffset")
+
+            if (displayEntityBlocks.isNotEmpty()) {
+                val sampleEntity = displayEntityBlocks[0]
+                Bukkit.getLogger().info("   实体[0]蓝图rotation: (${sampleEntity.rotation.x}, ${sampleEntity.rotation.y}, ${sampleEntity.rotation.z}, ${sampleEntity.rotation.w})")
+                Bukkit.getLogger().info("   实体[0]蓝图translation: (${sampleEntity.translation.x}, ${sampleEntity.translation.y}, ${sampleEntity.translation.z})")
             }
+
+            Bukkit.getLogger().info("==============================================")
 
             val offsetVec = org.joml.Vector3f(
                 effectiveDisplayOffset.x.toFloat(),
@@ -547,19 +574,16 @@ class BuildSite(
                 effectiveDisplayOffset.z.toFloat()
             )
 
-            Bukkit.getLogger().info("[BuildSite] displayOffset=$effectiveDisplayOffset, rotationSteps=$rotationSteps")
-            Bukkit.getLogger().info("[BuildSite] groupRotation=${groupRotation.x}, ${groupRotation.y}, ${groupRotation.z}, ${groupRotation.w}")
-
             val group = top.mc506lw.monolith.feature.display.DisplayEntityGroup(
                 anchor = anchor,
                 centerLocation = anchorLocation,
                 displayOffset = offsetVec,
-                groupRotation = groupRotation
+                initialYaw = initialYaw
             )
 
             for ((index, entity) in displayEntityBlocks.withIndex()) {
-                if (index < 3) {
-                    Bukkit.getLogger().info("[BuildSite] entity[$index] rotation=(${entity.rotation.x}, ${entity.rotation.y}, ${entity.rotation.z}, ${entity.rotation.w})")
+                if (index < 5) {
+                    Bukkit.getLogger().info("[BuildSite] entity[$index] 蓝图配置: translation=(${entity.translation.x}, ${entity.translation.y}, ${entity.translation.z}), rotation=(${entity.rotation.x}, ${entity.rotation.y}, ${entity.rotation.z}, ${entity.rotation.w})")
                 }
                 group.addBlockDisplay(
                     name = "$index",
@@ -965,6 +989,38 @@ class BuildSite(
         ghostDisplayEntities.values.forEach { it.remove() }
         ghostDisplayEntities.clear()
         playerRenderCache.clear()
+    }
+
+    private fun getPlayerFacingDirection(yaw: Float): String {
+        val normalizedYaw = ((yaw % 360) + 360) % 360
+        return when {
+            normalizedYaw < 45 || normalizedYaw >= 315 -> "南方 (SOUTH)"
+            normalizedYaw < 135 -> "西方 (WEST)"
+            normalizedYaw < 225 -> "北方 (NORTH)"
+            else -> "东方 (EAST)"
+        }
+    }
+
+    private fun loadBlueprintConfig(blueprintId: String): top.mc506lw.monolith.core.io.BlueprintConfig? {
+        return try {
+            val plugin = top.mc506lw.rebar.MonolithLib.instance
+            val blueprintsFolder = File(plugin.dataFolder, "blueprints")
+            val configFile = File(blueprintsFolder, "$blueprintId/$blueprintId.yml")
+
+            if (!configFile.exists()) {
+                Bukkit.getLogger().info("[BuildSite] 未找到蓝图配置文件: ${configFile.absolutePath}")
+                null
+            } else {
+                val config = top.mc506lw.monolith.core.io.BlueprintConfigLoader.load(configFile)
+                if (config != null) {
+                    Bukkit.getLogger().info("[BuildSite] 成功加载蓝图配置: assembledRotation=${config.assembledRotation}°, scaffoldRotation=${config.scaffoldRotation}°")
+                }
+                config
+            }
+        } catch (e: Exception) {
+            Bukkit.getLogger().warning("[BuildSite] 加载蓝图配置失败: ${e.message}")
+            null
+        }
     }
 
     companion object {

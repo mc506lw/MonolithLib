@@ -270,6 +270,7 @@ chat:
     preview_cancelled_hotbar: "<yellow>[MonolithLib] 切换物品栏，预览已取消</yellow>"
     err_position_in_site: "<red>[MonolithLib] 该位置已在工地范围内</red>"
     preview_moved: "<green><bold>[MonolithLib]</bold> <white>预览已移动到新位置</white></green>"
+    preview_rotated: "<green><bold>[MonolithLib]</bold> <white>预览已旋转到新方向</white></green>"
     preview_confirm_hint: "<green><bold>[MonolithLib]</bold> <white>再次右键同一位置 <yellow>确认创建</yellow> 工地</white></green>"
     preview_timeout_hint: "<gray>(30秒内有效，移动或滚动离开较远会取消)</gray>"
     all_layers_complete_hint: "<yellow>[MonolithLib] 所有层已完整，请放置核心控制器</yellow>"

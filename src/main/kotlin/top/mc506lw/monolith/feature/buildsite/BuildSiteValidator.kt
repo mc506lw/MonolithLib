@@ -143,8 +143,11 @@ object BuildSiteValidator {
         var maxZ = Int.MIN_VALUE
         
         val blockPositions = mutableListOf<Vector3i>()
-        
-        for (blockEntry in blueprint.assembledShape.blocks) {
+
+        val shapeToValidate = blueprint.scaffoldShape
+        Bukkit.getLogger().info("[BuildSiteValidator] 📐 使用 ${if (shapeToValidate === blueprint.assembledShape) "assembledShape" else "scaffoldShape"} 进行验证")
+
+        for (blockEntry in shapeToValidate.blocks) {
             val worldPos = transform.toWorldPosition(
                 controllerPos = controllerPos,
                 relativePos = blockEntry.position,

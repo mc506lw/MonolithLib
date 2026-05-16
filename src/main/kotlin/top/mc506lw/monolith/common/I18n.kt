@@ -273,6 +273,8 @@ object I18n {
             val disassembled = translatable("chat.build_site.disassembled")
             val errHasActivePreview = translatable("chat.build_site.err_has_active_preview")
             val previewExpired = translatable("chat.build_site.preview_expired")
+            val previewMoved = translatable("chat.build_site.preview_moved")
+            val previewRotated = translatable("chat.build_site.preview_rotated")
             fun previewCountdown(countdown: Int) = translatable(
                 "chat.build_site.preview_countdown", arg("countdown", countdown))
 

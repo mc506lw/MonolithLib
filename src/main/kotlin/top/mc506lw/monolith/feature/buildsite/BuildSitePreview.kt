@@ -65,26 +65,48 @@ object BuildSitePreviewManager {
         return preview
     }
     
-    fun movePreviewTo(player: Player, newAnchorLocation: Location): Boolean {
+    fun movePreviewTo(player: Player, newAnchorLocation: Location, newFacing: Facing): Boolean {
         val preview = getPreview(player) ?: return false
         if (!preview.isActive) return false
-        
+
         val newAnchorX = newAnchorLocation.blockX
         val newAnchorY = newAnchorLocation.blockY
         val newAnchorZ = newAnchorLocation.blockZ
-        
+
         val offsetX = newAnchorX - preview.anchorLocation.blockX
         val offsetY = newAnchorY - preview.anchorLocation.blockY
         val offsetZ = newAnchorZ - preview.anchorLocation.blockZ
-        
-        if (offsetX == 0 && offsetY == 0 && offsetZ == 0) return true
-        
+
+        if (offsetX == 0 && offsetY == 0 && offsetZ == 0 && preview.facing == newFacing) return true
+
         preview.anchorLocation.x = newAnchorX.toDouble()
         preview.anchorLocation.y = newAnchorY.toDouble()
         preview.anchorLocation.z = newAnchorZ.toDouble()
-        
-        preview.boxRenderer?.updatePosition(offsetX, offsetY, offsetZ)
-        
+
+        if (preview.facing != newFacing) {
+            Bukkit.getLogger().info("[BuildSitePreview] 🔄 方向变化: ${preview.facing} -> $newFacing, 旋转预览框")
+
+            val blueprint = top.mc506lw.monolith.api.MonolithAPI.getInstance().registry.get(preview.blueprintId)
+            if (blueprint != null) {
+                val newValidationResult = BuildSiteValidator.validate(blueprint, newAnchorLocation, newFacing)
+
+                val newBoxData = SmoothBoundingBoxRenderer.BoundingBoxData.fromMinMax(
+                    newValidationResult.boundingBox.minX, newValidationResult.boundingBox.minY, newValidationResult.boundingBox.minZ,
+                    newValidationResult.boundingBox.maxX, newValidationResult.boundingBox.maxY, newValidationResult.boundingBox.maxZ
+                )
+
+                preview.boxRenderer?.moveTo(newBoxData)
+                preview.facing = newFacing
+                preview.boundingBox = newValidationResult.boundingBox
+                preview.validationResult = newValidationResult
+
+                Bukkit.getLogger().info("[BuildSitePreview] ✅ 预览框已旋转到: Facing=$newFacing")
+                Bukkit.getLogger().info("[BuildSitePreview]    新 BoundingBox: (${newValidationResult.boundingBox.minX}, ${newValidationResult.boundingBox.minY}, ${newValidationResult.boundingBox.minZ}) -> (${newValidationResult.boundingBox.maxX}, ${newValidationResult.boundingBox.maxY}, ${newValidationResult.boundingBox.maxZ})")
+            }
+        } else {
+            preview.boxRenderer?.updatePosition(offsetX, offsetY, offsetZ)
+        }
+
         preview.errorMarkerDisplays.forEach { marker ->
             if (marker.isValid) {
                 marker.teleport(Location(preview.world,
@@ -94,9 +116,9 @@ object BuildSitePreviewManager {
                 ))
             }
         }
-        
+
         resetAutoCancel(player)
-        
+
         return true
     }
     
@@ -169,9 +191,9 @@ class BuildSitePreview(
     val playerId: UUID,
     val blueprintId: String,
     val world: World,
-    val boundingBox: BoundingBox,
-    val validationResult: ValidationResult,
-    val facing: Facing,
+    var boundingBox: BoundingBox,
+    var validationResult: ValidationResult,
+    var facing: Facing,
     var anchorLocation: Location
 ) {
     companion object {
@@ -204,7 +226,7 @@ class BuildSitePreview(
             boundingBox.maxX, boundingBox.maxY, boundingBox.maxZ
         )
         boxRenderer!!.show(boxData)
-        
+
         createErrorMarkers()
     }
     

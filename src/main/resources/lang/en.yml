@@ -266,6 +266,7 @@ chat:
     preview_cancelled_hotbar: "<yellow>[MonolithLib] Preview cancelled (hotbar switched)</yellow>"
     err_position_in_site: "<red>[MonolithLib] Position is already within a build site</red>"
     preview_moved: "<green><bold>[MonolithLib]</bold> <white>Preview moved to new position</white></green>"
+    preview_rotated: "<green><bold>[MonolithLib]</bold> <white>Preview rotated to new direction</white></green>"
     preview_confirm_hint: "<green><bold>[MonolithLib]</bold> <white>Right-click same location again to <yellow>confirm creation</yellow></white></green>"
     preview_timeout_hint: "<gray>(Valid for 30 seconds, moving far away will cancel)</gray>"
     all_layers_complete_hint: "<yellow>[MonolithLib] All layers complete, place core controller</yellow>"

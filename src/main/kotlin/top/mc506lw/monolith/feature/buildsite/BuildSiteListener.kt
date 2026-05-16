@@ -152,7 +152,26 @@ class BuildSiteListener : Listener {
         val targetBlock = clickedBlock.getRelative(blockFace)
         val targetLocation = targetBlock.location
 
-        val facing = BlueprintItem.getFacing(item) ?: Facing.fromYaw(player.location.yaw)
+        val playerYaw = player.location.yaw
+        val playerPitch = player.location.pitch
+
+        Bukkit.getLogger().info("========== [BuildSiteListener] 预览阶段调试信息 ==========")
+        Bukkit.getLogger().info("[BuildSiteListener] 📍 玩家实际视角:")
+        Bukkit.getLogger().info("   playerYaw=$playerYaw°, playerPitch=$playerPitch°")
+        Bukkit.getLogger().info("   玩家面朝: ${getPlayerFacingDirection(playerYaw)}")
+        Bukkit.getLogger().info("[BuildSiteListener] 📍 targetLocation (方块位置):")
+        Bukkit.getLogger().info("   targetLocation.yaw=${targetLocation.yaw}°, pitch=${targetLocation.pitch}°")
+
+        val facing = Facing.fromYaw(playerYaw)
+
+        Bukkit.getLogger().info("[BuildSiteListener] 🏗️  计算出的工地朝向:")
+        Bukkit.getLogger().info("   使用玩家视角计算 Facing")
+        Bukkit.getLogger().info("   最终使用的 Facing枚举: $facing")
+        Bukkit.getLogger().info("   rotationSteps: ${facing.rotationSteps}")
+        Bukkit.getLogger().info("==============================================")
+
+        targetLocation.yaw = playerYaw
+        targetLocation.pitch = playerPitch
 
         val existing = BuildSiteManager.getSiteAt(Vector3i(targetLocation.blockX, targetLocation.blockY, targetLocation.blockZ))
         if (existing != null) {
@@ -197,14 +216,19 @@ class BuildSiteListener : Listener {
         event.isCancelled = true
 
         val existingPreview = BuildSitePreviewManager.getPreview(player)
-        
+
         if (existingPreview != null && existingPreview.isActive) {
-            val moved = BuildSitePreviewManager.movePreviewTo(player, targetLocation)
+            val moved = BuildSitePreviewManager.movePreviewTo(player, targetLocation, facing)
             if (moved) {
-                player.sendMessage("")
-                player.sendMessage(I18n.translatable("chat.build_site.preview_moved"))
+                if (existingPreview.facing != facing) {
+                    player.sendMessage("")
+                    player.sendMessage(I18n.translatable("chat.build_site.preview_rotated"))
+                } else {
+                    player.sendMessage("")
+                    player.sendMessage(I18n.translatable("chat.build_site.preview_moved"))
+                }
                 player.sendMessage(I18n.translatable("chat.build_site.preview_confirm_hint"))
-                
+
                 pendingConfirmations[player.uniqueId] = PendingConfirmation(
                     blueprintId = blueprintId,
                     targetLocation = targetLocation.clone(),
@@ -218,6 +242,11 @@ class BuildSiteListener : Listener {
         BuildSitePreviewManager.stopPreview(player)
 
         val validationResult = BuildSiteValidator.validate(blueprint, targetLocation, facing)
+
+        Bukkit.getLogger().info("[BuildSiteListener] 📦 预览边界框信息:")
+        Bukkit.getLogger().info("   Facing: $facing")
+        Bukkit.getLogger().info("   BoundingBox: (${validationResult.boundingBox.minX}, ${validationResult.boundingBox.minY}, ${validationResult.boundingBox.minZ}) -> (${validationResult.boundingBox.maxX}, ${validationResult.boundingBox.maxY}, ${validationResult.boundingBox.maxZ})")
+        Bukkit.getLogger().info("   尺寸: ${validationResult.boundingBox.width}x${validationResult.boundingBox.height}x${validationResult.boundingBox.depth}")
 
         BuildSitePreviewManager.startPreview(player, blueprint, targetLocation, facing, validationResult)
 
@@ -617,5 +646,15 @@ class BuildSiteListener : Listener {
                 site.renderForPlayer(onlinePlayer)
             }
         }, 5L)
+    }
+
+    private fun getPlayerFacingDirection(yaw: Float): String {
+        val normalizedYaw = ((yaw % 360) + 360) % 360
+        return when {
+            normalizedYaw < 45 || normalizedYaw >= 315 -> "南方 (SOUTH)"
+            normalizedYaw < 135 -> "西方 (WEST)"
+            normalizedYaw < 225 -> "北方 (NORTH)"
+            else -> "东方 (EAST)"
+        }
     }
 }
