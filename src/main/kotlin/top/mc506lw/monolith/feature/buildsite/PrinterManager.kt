@@ -8,17 +8,19 @@ import org.bukkit.Sound
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import top.mc506lw.monolith.common.I18n
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.rebar.MonolithLib
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object PrinterManager {
-    
+
     private const val PRINTER_RADIUS = 4
     private const val TICKS_PER_PLACE = 4L
-    
+
     private val activePrinters = ConcurrentHashMap<UUID, Int>()
+    private val log = MonolithLogger.getLogger("Printer")
     
     private data class PosKey(val x: Int, val y: Int, val z: Int)
     private val legacy = LegacyComponentSerializer.legacySection()
@@ -156,13 +158,13 @@ object PrinterManager {
     private fun checkAdvancement(site: BuildSite, player: Player) {
         if (!site.checkLayerCompletion()) return
 
-        Bukkit.getLogger().info("[PrinterManager] checkAdvancement: 层${site.currentLayer}完成检查通过")
+        log.debug("site=${site.id}", "层完成检查通过", "layer" to site.currentLayer)
 
         val advancedCount = site.advanceToNextIncompleteLayer()
 
         if (advancedCount > 0) {
             player.sendMessage(legacy.serialize(I18n.Message.BuildMode.layerCompleted(site.currentLayer)))
-            Bukkit.getLogger().info("[PrinterManager] checkAdvancement: 推进了" + advancedCount + "层，当前层=" + site.currentLayer)
+            log.info("site=${site.id}", "层推进完成", "advancedCount" to advancedCount, "currentLayer" to site.currentLayer)
 
             Bukkit.getScheduler().runTaskLater(MonolithLib.instance, Runnable {
                 for (onlinePlayer in Bukkit.getOnlinePlayers()) {
@@ -173,7 +175,7 @@ object PrinterManager {
 
             BuildSiteManager.saveAll()
         } else {
-            Bukkit.getLogger().info("[PrinterManager] checkAdvancement: 所有层已完成，进入最终阶段")
+            log.info("site=${site.id}", "所有层已完成，进入最终阶段")
             startFinalPhase(site, player)
         }
     }

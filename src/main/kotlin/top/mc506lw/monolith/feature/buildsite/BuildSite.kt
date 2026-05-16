@@ -20,6 +20,7 @@ import org.joml.Vector3f
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import top.mc506lw.monolith.common.I18n
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.model.Shape
@@ -108,6 +109,8 @@ class BuildSite(
     initialPlacedBlocks: Set<Vector3i> = emptySet(),
     initialState: BuildSiteState = BuildSiteState.BUILDING
 ) {
+    private val logger = MonolithLogger.getLogger("Site")
+
     val blueprintId: String get() = blueprint.id
 
     val transform: CoordinateTransform = CoordinateTransform(facing)
@@ -466,7 +469,7 @@ class BuildSite(
 
         val world = anchorLocation.world ?: return
 
-        Bukkit.getLogger().info("[BuildSite] transitionToVirtual: 开始, siteId=$id, blueprintId=$blueprintId")
+        logger.info("site=$id", "开始虚拟化转换", "blueprint" to blueprintId)
 
         backupData.clear()
         for (ghost in allGhostBlocks) {
@@ -496,20 +499,20 @@ class BuildSite(
             top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor.KEY
         )
 
-        Bukkit.getLogger().info("[BuildSite] placeAnchorAndSpawnEntities: 已放置Anchor方块, 等待Rebar初始化... pos=(${coreWorldPos.x},${coreWorldPos.y},${coreWorldPos.z})")
+        logger.debug("site=$id", "已放置Anchor方块", "pos" to MonolithLogger.ModuleLogger.formatCoord(coreWorldPos.x, coreWorldPos.y, coreWorldPos.z))
 
         org.bukkit.Bukkit.getScheduler().runTaskLater(top.mc506lw.rebar.MonolithLib.instance, Runnable {
             val anchor = io.github.pylonmc.rebar.block.BlockStorage.get(coreBlock)
             if (anchor == null) {
-                Bukkit.getLogger().severe("[BuildSite] placeAnchorAndSpawnEntities: ❌ 无法获取Anchor! pos=(${coreWorldPos.x},${coreWorldPos.y},${coreWorldPos.z})")
+                logger.error("site=$id", "无法获取Anchor", "pos" to MonolithLogger.ModuleLogger.formatCoord(coreWorldPos.x, coreWorldPos.y, coreWorldPos.z))
                 return@Runnable
             }
             if (anchor !is top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor) {
-                Bukkit.getLogger().severe("[BuildSite] placeAnchorAndSpawnEntities: ❌ Anchor类型错误! actual=${anchor::class.simpleName}")
+                logger.error("site=$id", "Anchor类型错误", "actual" to anchor::class.simpleName)
                 return@Runnable
             }
 
-            Bukkit.getLogger().info("[BuildSite] placeAnchorAndSpawnEntities: ✅ Anchor已就位, 开始注册展示实体...")
+            logger.debug("site=$id", "Anchor已就位，开始注册展示实体")
 
             spawnDisplayEntitiesViaAnchor(anchor)
         }, 1L)
@@ -524,22 +527,15 @@ class BuildSite(
         }
 
         if (displayEntityBlocks.isEmpty()) {
-            Bukkit.getLogger().warning("[BuildSite] spawnDisplayEntitiesViaAnchor: 无有效展示实体数据!")
+            logger.warn("site=$id", "无有效展示实体数据")
             return
         }
 
-        Bukkit.getLogger().info("[BuildSite] spawnDisplayEntitiesViaAnchor: 创建展示实体组, 实体数=${displayEntityBlocks.size}")
+        logger.debug("site=$id", "创建展示实体组", "entityCount" to displayEntityBlocks.size)
 
         try {
             val latestBlueprint = top.mc506lw.monolith.api.MonolithAPI.getInstance().registry.get(blueprintId)
             val effectiveDisplayOffset = latestBlueprint?.meta?.displayOffset ?: blueprint.meta.displayOffset
-
-            Bukkit.getLogger().info("========== [BuildSite] 旋转系统调试信息 ==========")
-            Bukkit.getLogger().info("[BuildSite] 📍 玩家视角:")
-            Bukkit.getLogger().info("   yaw=${anchorLocation.yaw}°, pitch=${anchorLocation.pitch}°")
-
-            val playerFacing = getPlayerFacingDirection(anchorLocation.yaw)
-            Bukkit.getLogger().info("   玩家面朝: $playerFacing")
 
             val facing = top.mc506lw.monolith.core.transform.Facing.fromYaw(anchorLocation.yaw)
             val rotationSteps = facing.rotationSteps
@@ -549,24 +545,12 @@ class BuildSite(
             val assembledRotation = config?.assembledRotation ?: 0
             val initialYaw = baseYaw + assembledRotation
 
-            Bukkit.getLogger().info("[BuildSite] 🏗️  工地朝向:")
-            Bukkit.getLogger().info("   Facing枚举: $facing")
-            Bukkit.getLogger().info("   rotationSteps: $rotationSteps")
-            Bukkit.getLogger().info("   基础旋转 (玩家朝向): ${baseYaw}°")
-            Bukkit.getLogger().info("   蓝图配置 assembled: ${assembledRotation}°")
-            Bukkit.getLogger().info("   最终 initialYaw: ${initialYaw}° (将应用于展示实体组)")
-
-            Bukkit.getLogger().info("[BuildSite] 📋 蓝图配置:")
-            Bukkit.getLogger().info("   blueprintId: $blueprintId")
-            Bukkit.getLogger().info("   displayOffset: $effectiveDisplayOffset")
+            logger.trace("site=$id", "旋转系统参数", "facing" to facing, "steps" to rotationSteps, "baseYaw" to String.format("%.1f", baseYaw), "assembledRot" to assembledRotation, "initialYaw" to String.format("%.1f", initialYaw))
 
             if (displayEntityBlocks.isNotEmpty()) {
                 val sampleEntity = displayEntityBlocks[0]
-                Bukkit.getLogger().info("   实体[0]蓝图rotation: (${sampleEntity.rotation.x}, ${sampleEntity.rotation.y}, ${sampleEntity.rotation.z}, ${sampleEntity.rotation.w})")
-                Bukkit.getLogger().info("   实体[0]蓝图translation: (${sampleEntity.translation.x}, ${sampleEntity.translation.y}, ${sampleEntity.translation.z})")
+                logger.trace("site=$id", "样例实体配置", "index" to 0, "trans" to sampleEntity.translation, "rot" to sampleEntity.rotation)
             }
-
-            Bukkit.getLogger().info("==============================================")
 
             val offsetVec = org.joml.Vector3f(
                 effectiveDisplayOffset.x.toFloat(),
@@ -582,9 +566,6 @@ class BuildSite(
             )
 
             for ((index, entity) in displayEntityBlocks.withIndex()) {
-                if (index < 5) {
-                    Bukkit.getLogger().info("[BuildSite] entity[$index] 蓝图配置: translation=(${entity.translation.x}, ${entity.translation.y}, ${entity.translation.z}), rotation=(${entity.rotation.x}, ${entity.rotation.y}, ${entity.rotation.z}, ${entity.rotation.w})")
-                }
                 group.addBlockDisplay(
                     name = "$index",
                     blockData = entity.blockData!!,
@@ -596,9 +577,9 @@ class BuildSite(
 
             this@BuildSite.displayGroup = group
 
-            Bukkit.getLogger().info("[BuildSite] spawnDisplayEntitiesViaAnchor: ✅ 展示实体组创建成功! 包含${group.getSize()}个实体")
+            logger.info("site=$id", "展示实体组创建成功", "entityCount" to group.getSize())
         } catch (e: Exception) {
-            Bukkit.getLogger().severe("[BuildSite] spawnDisplayEntitiesViaAnchor: ❌ 失败: ${e.message}")
+            logger.error("site=$id", "展示实体组创建失败", "error" to e.message)
             e.printStackTrace()
         }
     }
@@ -637,27 +618,27 @@ class BuildSite(
 
     fun disassembleFromVirtual(): Boolean {
         if (state != BuildSiteState.VIRTUAL) {
-            Bukkit.getLogger().warning("[BuildSite] disassembleFromVirtual: 状态不是VIRTUAL! 当前状态=$state, siteId=$id")
+            logger.warn("site=$id", "解体失败：状态不是VIRTUAL", "currentState" to state)
             return false
         }
 
         val world = anchorLocation.world ?: return false
 
-        Bukkit.getLogger().info("[BuildSite] disassembleFromVirtual: 开始解体, siteId=$id")
+        logger.info("site=$id", "开始虚拟解体")
 
         val coreBlock = world.getBlockAt(coreWorldPos.x, coreWorldPos.y, coreWorldPos.z)
         val anchor = io.github.pylonmc.rebar.block.BlockStorage.get(coreBlock)
 
         if (anchor is top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor) {
             anchor.tryRemoveAllEntities()
-            Bukkit.getLogger().info("[BuildSite] disassembleFromVirtual: Anchor已清理所有展示实体")
+            logger.debug("site=$id", "Anchor已清理展示实体")
         } else {
-            Bukkit.getLogger().warning("[BuildSite] disassembleFromVirtual: 未找到Anchor或类型不匹配, actual=${anchor?.let { it::class.simpleName }}")
+            logger.warn("site=$id", "未找到有效Anchor", "actualType" to anchor?.let { it::class.simpleName })
         }
 
         if (io.github.pylonmc.rebar.block.BlockStorage.isRebarBlock(coreBlock)) {
             io.github.pylonmc.rebar.block.BlockStorage.breakBlock(coreBlock)
-            Bukkit.getLogger().info("[BuildSite] disassembleFromVirtual: 已通过breakBlock移除Anchor")
+            logger.debug("site=$id", "已移除Anchor方块")
         } else {
             coreBlock.setType(Material.AIR, false)
         }
@@ -1008,17 +989,17 @@ class BuildSite(
             val configFile = File(blueprintsFolder, "$blueprintId/$blueprintId.yml")
 
             if (!configFile.exists()) {
-                Bukkit.getLogger().info("[BuildSite] 未找到蓝图配置文件: ${configFile.absolutePath}")
+                logger.trace("config", "未找到蓝图配置文件", "path" to configFile.absolutePath)
                 null
             } else {
                 val config = top.mc506lw.monolith.core.io.BlueprintConfigLoader.load(configFile)
                 if (config != null) {
-                    Bukkit.getLogger().info("[BuildSite] 成功加载蓝图配置: assembledRotation=${config.assembledRotation}°, scaffoldRotation=${config.scaffoldRotation}°")
+                    logger.debug("config", "蓝图配置加载成功", "assembledRot" to config.assembledRotation, "scaffoldRot" to config.scaffoldRotation)
                 }
                 config
             }
         } catch (e: Exception) {
-            Bukkit.getLogger().warning("[BuildSite] 加载蓝图配置失败: ${e.message}")
+            logger.warn("config", "蓝图配置加载失败", "error" to e.message)
             null
         }
     }

@@ -21,6 +21,7 @@ import org.bukkit.event.player.PlayerItemHeldEvent
 import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
 import top.mc506lw.monolith.common.I18n
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.transform.Facing
 import java.util.UUID
@@ -29,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap
 class BuildSiteListener : Listener {
 
     private val legacy = LegacyComponentSerializer.legacySection()
+    private val logger = MonolithLogger.getLogger("BSL")
 
     private data class PendingConfirmation(
         val blueprintId: String,
@@ -155,20 +157,9 @@ class BuildSiteListener : Listener {
         val playerYaw = player.location.yaw
         val playerPitch = player.location.pitch
 
-        Bukkit.getLogger().info("========== [BuildSiteListener] 预览阶段调试信息 ==========")
-        Bukkit.getLogger().info("[BuildSiteListener] 📍 玩家实际视角:")
-        Bukkit.getLogger().info("   playerYaw=$playerYaw°, playerPitch=$playerPitch°")
-        Bukkit.getLogger().info("   玩家面朝: ${getPlayerFacingDirection(playerYaw)}")
-        Bukkit.getLogger().info("[BuildSiteListener] 📍 targetLocation (方块位置):")
-        Bukkit.getLogger().info("   targetLocation.yaw=${targetLocation.yaw}°, pitch=${targetLocation.pitch}°")
-
         val facing = Facing.fromYaw(playerYaw)
 
-        Bukkit.getLogger().info("[BuildSiteListener] 🏗️  计算出的工地朝向:")
-        Bukkit.getLogger().info("   使用玩家视角计算 Facing")
-        Bukkit.getLogger().info("   最终使用的 Facing枚举: $facing")
-        Bukkit.getLogger().info("   rotationSteps: ${facing.rotationSteps}")
-        Bukkit.getLogger().info("==============================================")
+        logger.debug("site=preview", "预览朝向计算", "player" to player.name, "facing" to facing, "yaw" to MonolithLogger.ModuleLogger.formatYaw(playerYaw), "pitch" to MonolithLogger.ModuleLogger.formatPitch(playerPitch), "steps" to facing.rotationSteps)
 
         targetLocation.yaw = playerYaw
         targetLocation.pitch = playerPitch
@@ -243,10 +234,10 @@ class BuildSiteListener : Listener {
 
         val validationResult = BuildSiteValidator.validate(blueprint, targetLocation, facing)
 
-        Bukkit.getLogger().info("[BuildSiteListener] 📦 预览边界框信息:")
-        Bukkit.getLogger().info("   Facing: $facing")
-        Bukkit.getLogger().info("   BoundingBox: (${validationResult.boundingBox.minX}, ${validationResult.boundingBox.minY}, ${validationResult.boundingBox.minZ}) -> (${validationResult.boundingBox.maxX}, ${validationResult.boundingBox.maxY}, ${validationResult.boundingBox.maxZ})")
-        Bukkit.getLogger().info("   尺寸: ${validationResult.boundingBox.width}x${validationResult.boundingBox.height}x${validationResult.boundingBox.depth}")
+        logger.debug("site=preview", "预览边界框计算", "player" to player.name, "blueprint" to blueprintId, "facing" to facing, "bounds" to MonolithLogger.ModuleLogger.formatCoordRange(
+            validationResult.boundingBox.minX, validationResult.boundingBox.minY, validationResult.boundingBox.minZ,
+            validationResult.boundingBox.maxX, validationResult.boundingBox.maxY, validationResult.boundingBox.maxZ
+        ), "size" to "${validationResult.boundingBox.width}x${validationResult.boundingBox.height}x${validationResult.boundingBox.depth}")
 
         BuildSitePreviewManager.startPreview(player, blueprint, targetLocation, facing, validationResult)
 
@@ -321,32 +312,32 @@ class BuildSiteListener : Listener {
         val rebarItem = try {
             io.github.pylonmc.rebar.item.RebarItem.fromStack(item)
         } catch (e: Exception) {
-            Bukkit.getLogger().info("[MonolithLib] handleControllerActivation: RebarItem.fromStack 异常: ${e.message}")
+            logger.warn("controller", "RebarItem解析异常", "player" to player.name, "error" to e.message)
             null
         }
 
         if (rebarItem == null) {
-            Bukkit.getLogger().info("[MonolithLib] handleControllerActivation: 物品不是Rebar物品, type=${item.type}, name=${item.itemMeta?.displayName}")
+            logger.trace("controller", "非Rebar物品跳过", "player" to player.name, "itemType" to item.type, "itemName" to item.itemMeta?.displayName)
             return
         }
 
-        Bukkit.getLogger().info("[MonolithLib] handleControllerActivation: 检测到Rebar物品, key=${rebarItem.schema.key}, clickedPos=$clickedPos")
+        logger.debug("controller", "检测到Rebar控制器", "player" to player.name, "rebarKey" to rebarItem.schema.key, "clickedPos" to clickedPos)
 
         for (site in BuildSiteManager.getAllActiveSites()) {
             if (site.state != BuildSiteState.AWAITING_CORE) continue
 
             val isCore = site.isCorePosition(clickedPos) || site.isNearCorePosition(clickedPos)
-            Bukkit.getLogger().info("[MonolithLib] handleControllerActivation: 检查工地 ${site.id}, state=${site.state}, isCore=$isCore, clickedPos=$clickedPos, coreWorldPos=${site.coreWorldPos}, coreRebarKey=${site.coreRebarKey}")
+            logger.trace("controller", "检查工地匹配", "siteId" to site.id, "state" to site.state, "isCore" to isCore, "clickedPos" to clickedPos, "coreWorldPos" to site.coreWorldPos, "coreRebarKey" to site.coreRebarKey)
 
             if (!isCore) continue
 
             if (site.coreRebarKey != null && rebarItem.schema.key != site.coreRebarKey) {
-                Bukkit.getLogger().info("[MonolithLib] handleControllerActivation: 控制器key不匹配! 需要=${site.coreRebarKey}, 实际=${rebarItem.schema.key}")
+                logger.warn("controller", "控制器key不匹配", "player" to player.name, "siteId" to site.id, "required" to site.coreRebarKey, "actual" to rebarItem.schema.key)
                 player.sendMessage(legacy.serialize(I18n.Message.BuildSite.errWrongController))
                 return
             }
 
-            Bukkit.getLogger().info("[MonolithLib] handleControllerActivation: ✅ 匹配成功! 触发虚拟化")
+            logger.info("site=${site.id}", "控制器激活成功", "player" to player.name, "rebarKey" to rebarItem.schema.key)
 
             event.isCancelled = true
 
@@ -359,7 +350,7 @@ class BuildSiteListener : Listener {
             return
         }
 
-        Bukkit.getLogger().info("[MonolithLib] handleControllerActivation: 未找到匹配的AWAITING_CORE工地")
+        logger.trace("controller", "未找到匹配的AWAITING_CORE工地", "player" to player.name)
     }
 
     private fun activateVirtualMachine(site: BuildSite, player: Player) {
@@ -478,10 +469,10 @@ class BuildSiteListener : Listener {
     private fun handleBreakInVirtual(
         site: BuildSite, pos: Vector3i, block: Block, player: Player, event: BlockBreakEvent
     ) {
-        Bukkit.getLogger().info("[MonolithLib] handleBreakInVirtual: 检测到破坏, pos=$pos, siteId=${site.id}, state=${site.state}")
+        logger.debug("site=${site.id}", "虚拟区破坏检测", "player" to player.name, "pos" to pos, "state" to site.state)
 
         if (!site.isVirtualPosition(pos)) {
-            Bukkit.getLogger().info("[MonolithLib] handleBreakInVirtual: ⚠️ 位置不在虚拟区域内, isVirtualPosition=false")
+            logger.trace("site=${site.id}", "位置不在虚拟区域", "pos" to pos)
             return
         }
 

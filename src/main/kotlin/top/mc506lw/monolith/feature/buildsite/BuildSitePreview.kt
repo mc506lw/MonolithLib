@@ -17,6 +17,7 @@ import org.joml.Vector3f
 import top.mc506lw.monolith.feature.preview.SmoothBoundingBoxRenderer
 import top.mc506lw.rebar.MonolithLib
 import top.mc506lw.monolith.common.I18n
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.transform.CoordinateTransform
@@ -25,9 +26,10 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object BuildSitePreviewManager {
-    
+
     private val legacy = LegacyComponentSerializer.legacySection()
     private const val PREVIEW_DURATION_TICKS = 200L
+    private val logger = MonolithLogger.getLogger("Preview")
     
     private val activePreviews = ConcurrentHashMap<UUID, BuildSitePreview>()
     private val playerPreviews = ConcurrentHashMap<UUID, UUID>()
@@ -84,11 +86,16 @@ object BuildSitePreviewManager {
         preview.anchorLocation.z = newAnchorZ.toDouble()
 
         if (preview.facing != newFacing) {
-            Bukkit.getLogger().info("[BuildSitePreview] 🔄 方向变化: ${preview.facing} -> $newFacing, 旋转预览框")
+            logger.debug("preview=${preview.id}", "预览朝向变更", "player" to player.name, "oldFacing" to preview.facing, "newFacing" to newFacing)
 
             val blueprint = top.mc506lw.monolith.api.MonolithAPI.getInstance().registry.get(preview.blueprintId)
             if (blueprint != null) {
                 val newValidationResult = BuildSiteValidator.validate(blueprint, newAnchorLocation, newFacing)
+
+                logger.debug("preview=${preview.id}", "预览框已旋转", "facing" to newFacing, "bounds" to MonolithLogger.ModuleLogger.formatCoordRange(
+                    newValidationResult.boundingBox.minX, newValidationResult.boundingBox.minY, newValidationResult.boundingBox.minZ,
+                    newValidationResult.boundingBox.maxX, newValidationResult.boundingBox.maxY, newValidationResult.boundingBox.maxZ
+                ))
 
                 val newBoxData = SmoothBoundingBoxRenderer.BoundingBoxData.fromMinMax(
                     newValidationResult.boundingBox.minX, newValidationResult.boundingBox.minY, newValidationResult.boundingBox.minZ,
@@ -99,9 +106,6 @@ object BuildSitePreviewManager {
                 preview.facing = newFacing
                 preview.boundingBox = newValidationResult.boundingBox
                 preview.validationResult = newValidationResult
-
-                Bukkit.getLogger().info("[BuildSitePreview] ✅ 预览框已旋转到: Facing=$newFacing")
-                Bukkit.getLogger().info("[BuildSitePreview]    新 BoundingBox: (${newValidationResult.boundingBox.minX}, ${newValidationResult.boundingBox.minY}, ${newValidationResult.boundingBox.minZ}) -> (${newValidationResult.boundingBox.maxX}, ${newValidationResult.boundingBox.maxY}, ${newValidationResult.boundingBox.maxZ})")
             }
         } else {
             preview.boxRenderer?.updatePosition(offsetX, offsetY, offsetZ)

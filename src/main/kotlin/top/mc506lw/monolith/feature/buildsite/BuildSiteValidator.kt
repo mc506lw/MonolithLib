@@ -10,6 +10,7 @@ import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.transform.BlockStateRotator
 import top.mc506lw.monolith.core.transform.CoordinateTransform
 import top.mc506lw.monolith.core.transform.Facing
+import top.mc506lw.monolith.common.MonolithLogger
 
 data class ValidationResult(
     val isValid: Boolean,
@@ -77,7 +78,9 @@ data class BoundingBox(
 }
 
 object BuildSiteValidator {
-    
+
+    private val logger = MonolithLogger.getLogger("Validator")
+
     private val UNBREAKABLE_MATERIALS = setOf(
         Material.BEDROCK,
         Material.BARRIER,
@@ -145,7 +148,7 @@ object BuildSiteValidator {
         val blockPositions = mutableListOf<Vector3i>()
 
         val shapeToValidate = blueprint.scaffoldShape
-        Bukkit.getLogger().info("[BuildSiteValidator] 📐 使用 ${if (shapeToValidate === blueprint.assembledShape) "assembledShape" else "scaffoldShape"} 进行验证")
+        logger.trace("validate", "开始验证", "blueprint" to blueprint.id, "shapeType" to if (shapeToValidate === blueprint.assembledShape) "assembled" else "scaffold")
 
         for (blockEntry in shapeToValidate.blocks) {
             val worldPos = transform.toWorldPosition(

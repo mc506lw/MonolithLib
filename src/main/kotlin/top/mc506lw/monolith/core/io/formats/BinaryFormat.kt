@@ -12,6 +12,7 @@ import top.mc506lw.monolith.core.model.BuildStage
 import top.mc506lw.monolith.core.model.DisplayEntityData
 import top.mc506lw.monolith.core.model.DisplayType
 import top.mc506lw.monolith.core.model.Shape
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.validation.predicate.*
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -19,9 +20,11 @@ import java.io.*
 import java.util.logging.Level
 
 object BinaryFormat : StructureSerializer {
-    
+
     private const val MAGIC: Int = 0x4D4E4231
     private const val CURRENT_VERSION = 4
+
+    private val log = MonolithLogger.getLogger("BinaryFmt")
     
     override val formatName: String = "Monolith Binary"
     override val fileExtension: String = ".mnb"
@@ -261,7 +264,7 @@ object BinaryFormat : StructureSerializer {
         }
         
         val blockCount = dis.readInt()
-        Bukkit.getLogger().info("[MonolithLib] BinaryFormat 诊断 (legacy v$version): blockCount=$blockCount, id=$id")
+        log.debug("load", "BinaryFormat诊断(legacy)", "version" to version, "blockCount" to blockCount, "id" to id)
         val blocks = readBlockEntries(dis, blockCount, version)
         
         val shape = Shape(blocks)
@@ -321,7 +324,7 @@ object BinaryFormat : StructureSerializer {
         }
         
         if (skippedBlocks > 0) {
-            Bukkit.getLogger().warning("[MonolithLib] 跳过 $skippedBlocks 个损坏的方块数据 (文件版本: $version)")
+            log.warn("load", "跳过损坏的方块数据", "count" to skippedBlocks, "version" to version)
         }
         
         return blocks
@@ -425,7 +428,7 @@ object BinaryFormat : StructureSerializer {
                     itemStack = itemStack
                 ))
             } catch (_: Exception) {
-                Bukkit.getLogger().warning("[MonolithLib] 读取显示实体失败，跳过")
+                log.warn("load", "读取显示实体失败，跳过")
             }
         }
         

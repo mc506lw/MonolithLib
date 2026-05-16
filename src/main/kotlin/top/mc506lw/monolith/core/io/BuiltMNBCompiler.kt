@@ -12,10 +12,13 @@ import top.mc506lw.monolith.core.model.BuildStage
 import top.mc506lw.monolith.core.model.DisplayEntityData
 import top.mc506lw.monolith.core.model.DisplayType
 import top.mc506lw.monolith.core.model.Shape
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.validation.predicate.*
 import java.io.File
 
 object BuiltMNBCompiler {
+
+    private val log = MonolithLogger.getLogger("Compiler")
 
     fun compile(rawFile: File, configFile: File): Blueprint? {
         val rawBlueprint = try {
@@ -92,34 +95,22 @@ object BuiltMNBCompiler {
 
             if (config.scaffoldRotation != 0) {
                 val steps = config.scaffoldRotation / 90
-                Bukkit.getLogger().info("[BuiltMNBCompiler] 应用脚手架旋转: ${config.scaffoldRotation}° ($steps 步), 旋转中心=$center")
-                Bukkit.getLogger().info("[BuiltMNBCompiler] 旋转前 scaffoldShape 方块数=${scaffoldShape.blocks.size}, 前3个方块:")
-                scaffoldShape.blocks.take(3).forEach { block ->
-                    Bukkit.getLogger().info("[BuiltMNBCompiler]   → pos=${block.position}, blockData=${block.blockData.asString}")
-                }
+                log.debug("compile", "应用脚手架旋转", "degrees" to config.scaffoldRotation, "steps" to steps, "center" to center)
+                log.trace("compile", "旋转前脚手架", "blockCount" to scaffoldShape.blocks.size)
 
                 scaffoldShape = rotateShape(scaffoldShape, center, steps)
 
-                Bukkit.getLogger().info("[BuiltMNBCompiler] 旋转后 scaffoldShape 方块数=${scaffoldShape.blocks.size}, 前3个方块:")
-                scaffoldShape.blocks.take(3).forEach { block ->
-                    Bukkit.getLogger().info("[BuiltMNBCompiler]   → pos=${block.position}, blockData=${block.blockData.asString}")
-                }
+                log.trace("compile", "旋转后脚手架", "blockCount" to scaffoldShape.blocks.size)
             }
 
             if (config.assembledRotation != 0) {
                 val steps = config.assembledRotation / 90
-                Bukkit.getLogger().info("[BuiltMNBCompiler] 应用成型旋转: ${config.assembledRotation}° ($steps 步), 旋转中心=$center")
-                Bukkit.getLogger().info("[BuiltMNBCompiler] 旋转前 assembledShape 方块数=${finalAssembledShape.blocks.size}, 前3个方块:")
-                finalAssembledShape.blocks.take(3).forEach { block ->
-                    Bukkit.getLogger().info("[BuiltMNBCompiler]   → pos=${block.position}, blockData=${block.blockData.asString}")
-                }
+                log.debug("compile", "应用成型旋转", "degrees" to config.assembledRotation, "steps" to steps, "center" to center)
+                log.trace("compile", "旋转前成型", "blockCount" to finalAssembledShape.blocks.size)
 
                 finalAssembledShape = rotateShape(finalAssembledShape, center, steps)
-                
-                Bukkit.getLogger().info("[BuiltMNBCompiler] 旋转后 assembledShape 方块数=${finalAssembledShape.blocks.size}, 前3个方块:")
-                finalAssembledShape.blocks.take(3).forEach { block ->
-                    Bukkit.getLogger().info("[BuiltMNBCompiler]   → pos=${block.position}, blockData=${block.blockData.asString}")
-                }
+
+                log.trace("compile", "旋转后成型", "blockCount" to finalAssembledShape.blocks.size)
             }
         }
 
@@ -129,7 +120,7 @@ object BuiltMNBCompiler {
             val steps = config.assembledRotation / 90
             
             if (displayEntitiesToCorrect.isNotEmpty()) {
-                Bukkit.getLogger().info("[BuiltMNBCompiler] 修正 displayEntities blockData (${displayEntitiesToCorrect.size} 个实体), 步数=$steps")
+                log.debug("compile", "修正展示实体blockData", "entityCount" to displayEntitiesToCorrect.size, "steps" to steps)
                 displayEntitiesToCorrect = rotateDisplayEntities(displayEntitiesToCorrect, center, steps)
             }
         }
@@ -148,7 +139,7 @@ object BuiltMNBCompiler {
             val scaffoldSteps = config.scaffoldRotation / 90
             val assembledSteps = config.assembledRotation / 90
             if (scaffoldSteps != 0) controllerOffset = rotateCoordinate(controllerOffset, center, scaffoldSteps)
-            Bukkit.getLogger().info("[BuiltMNBCompiler] 旋转后的 controllerOffset: $controllerOffset")
+                log.trace("compile", "旋转控制器偏移", "offset" to controllerOffset)
         }
 
         var finalDisplayOffset = config.displayOffset ?: rawBlueprint.meta.displayOffset
@@ -161,10 +152,10 @@ object BuiltMNBCompiler {
                 3 -> Vector3i(-finalDisplayOffset.z, finalDisplayOffset.y, finalDisplayOffset.x)
                 else -> finalDisplayOffset
             }
-            Bukkit.getLogger().info("[BuiltMNBCompiler] 旋转 displayOffset: ${config.displayOffset ?: rawBlueprint.meta.displayOffset} → $finalDisplayOffset")
+            log.debug("compile", "旋转展示偏移", "from" to (config.displayOffset ?: rawBlueprint.meta.displayOffset), "to" to finalDisplayOffset)
         }
 
-        Bukkit.getLogger().info("[BuiltMNBCompiler] displayOffset: YML配置=${config.displayOffset}, 蓝图默认=${rawBlueprint.meta.displayOffset}, 最终=$finalDisplayOffset")
+        log.trace("compile", "展示偏移汇总", "ymlConfig" to config.displayOffset, "blueprintDefault" to rawBlueprint.meta.displayOffset, "final" to finalDisplayOffset)
 
         val meta = rawBlueprint.meta.copy(
             displayName = if (config.metaName.isNotEmpty()) config.metaName else rawBlueprint.meta.displayName,
@@ -313,14 +304,14 @@ object BuiltMNBCompiler {
     ): List<DisplayEntityData> {
         if (steps == 0 || displayEntities.isEmpty()) return displayEntities
 
-        Bukkit.getLogger().info("[BuiltMNBCompiler] rotateDisplayEntities: 步数=$steps (只旋转position和blockData, translation/rotation/scale由运行时facing处理), 实体数=${displayEntities.size}")
+        log.debug("compile", "旋转展示实体", "steps" to steps, "entityCount" to displayEntities.size)
 
         return displayEntities.mapIndexed { index, entity ->
             val rp = rotateCoordinate(entity.position, center, steps)
             val rb = entity.blockData?.let { rotateBlockData(it.clone(), steps) }
 
             if (index < 3) {
-                Bukkit.getLogger().info("[BuiltMNBCompiler]   [$index/${displayEntities.size}] pos=${entity.position}→$rp | trans保持=(${entity.translation.x},${entity.translation.y},${entity.translation.z})")
+                log.trace("compile", "实体旋转详情", "index" to index, "total" to displayEntities.size, "posFrom" to entity.position, "posTo" to rp)
             }
 
             entity.copy(position = rp, translation = entity.translation, blockData = rb)

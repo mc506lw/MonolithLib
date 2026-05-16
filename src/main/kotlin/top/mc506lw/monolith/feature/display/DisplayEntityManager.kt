@@ -13,12 +13,15 @@ import top.mc506lw.monolith.core.model.Shape
 import top.mc506lw.monolith.core.transform.BlockStateRotator
 import top.mc506lw.monolith.core.transform.CoordinateTransform
 import top.mc506lw.monolith.core.transform.Facing
+import top.mc506lw.monolith.common.MonolithLogger
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object DisplayEntityManager {
+
+    private val log = MonolithLogger.getLogger("DEManager")
 
     private val siteDisplays = ConcurrentHashMap<UUID, MutableList<Display>>()
 
@@ -70,14 +73,14 @@ object DisplayEntityManager {
             val autoY = kotlin.math.round(scMinY - deMinY).toInt()
             val autoZ = kotlin.math.round(scMinZ - deMinZ).toInt()
 
-            Bukkit.getLogger().info("[DisplayEntityManager] 自动对齐(角点): scaffold_min=($scMinX,$scMinY,$scMinZ), DE_min=($deMinX,$deMinY,$deMinZ), auto=($autoX,$autoY,$autoZ), 用户配置=$displayOffset")
+            log.debug("align", "自动对齐计算", "scaffoldMin" to "($scMinX,$scMinY,$scMinZ)", "deMin" to "($deMinX,$deMinY,$deMinZ)", "auto" to "($autoX,$autoY,$autoZ)", "userConfig" to displayOffset)
 
             Vector3i(autoX + displayOffset.x, autoY + displayOffset.y, autoZ + displayOffset.z)
         } else {
             displayOffset
         }
 
-        Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualViewFromEntities: 开始, siteId=$siteId, entities=${entities.size}, controllerPos=$controllerPos, facing=$facing, 最终offset=$effectiveOffset")
+        log.info("site=$siteId", "开始生成虚拟视图", "entityCount" to entities.size, "controllerPos" to controllerPos, "facing" to facing, "offset" to effectiveOffset)
 
         val displays = mutableListOf<Display>()
         var successCount = 0
@@ -95,7 +98,7 @@ object DisplayEntityManager {
             val location = Location(world, worldX, worldY, worldZ)
 
             if (index < 3) {
-                Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualViewFromEntities: entity[$index] pos=${entity.position}, translation=(${entity.translation.x}, ${entity.translation.y}, ${entity.translation.z}), scale=(${entity.scale.x}, ${entity.scale.y}, ${entity.scale.z}), rotTrans=($rotTransX, $rotTransY, $rotTransZ), spawnLoc=($worldX, $worldY, $worldZ)")
+                log.trace("site=$siteId", "实体生成详情", "index" to index, "pos" to entity.position, "trans" to entity.translation, "scale" to entity.scale, "spawnLoc" to "($worldX,$worldY,$worldZ)")
             }
 
             try {
@@ -125,7 +128,7 @@ object DisplayEntityManager {
             } catch (e: Exception) {
                 failCount++
                 if (failCount <= 3) {
-                    Bukkit.getLogger().warning("[DisplayEntityManager] spawnVirtualViewFromEntities: 生成失败 at ($worldX, $worldY, $worldZ): ${e.message}")
+                    log.warn("site=$siteId", "实体生成失败", "pos" to "($worldX,$worldY,$worldZ)", "error" to e.message)
                 }
             }
         }
@@ -134,7 +137,7 @@ object DisplayEntityManager {
             siteDisplays[siteId] = displays
         }
 
-        Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualViewFromEntities: 完成! 成功=$successCount, 失败=$failCount, 总计=${entities.size}")
+        log.info("site=$siteId", "虚拟视图生成完成", "success" to successCount, "failed" to failCount, "total" to entities.size)
 
         return successCount
     }
@@ -179,8 +182,7 @@ object DisplayEntityManager {
             anchorLocation.blockZ
         )
 
-        Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualView: 开始, siteId=$siteId")
-        Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualView: assembledShape.blocks.size=${assembledShape.blocks.size}, controllerPos=$controllerPos, facing=$facing, controllerOffset=$controllerOffset")
+        log.info("site=$siteId", "开始生成虚拟视图", "blockCount" to assembledShape.blocks.size, "controllerPos" to controllerPos, "facing" to facing, "offset" to controllerOffset)
 
         val displays = mutableListOf<Display>()
         var successCount = 0
@@ -198,7 +200,7 @@ object DisplayEntityManager {
             val rotatedBlockData = BlockStateRotator.rotate(entry.blockData.clone(), rotationSteps)
 
             if (index < 5) {
-                Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualView: entry[$index] pos=${entry.position}, blockData=${entry.blockData.material}, rotated=$rotatedBlockData, worldPos=$worldPos")
+                log.trace("site=$siteId", "方块生成详情", "index" to index, "pos" to entry.position, "material" to entry.blockData.material, "worldPos" to worldPos)
             }
 
             val location = Location(
@@ -219,7 +221,7 @@ object DisplayEntityManager {
             } catch (e: Exception) {
                 failCount++
                 if (failCount <= 3) {
-                    Bukkit.getLogger().warning("[DisplayEntityManager] spawnVirtualView: 生成展示实体失败 at $worldPos: ${e.message}")
+                    log.warn("site=$siteId", "展示实体生成失败", "pos" to worldPos, "error" to e.message)
                 }
             }
         }
@@ -228,21 +230,21 @@ object DisplayEntityManager {
             siteDisplays[siteId] = displays
         }
 
-        Bukkit.getLogger().info("[DisplayEntityManager] spawnVirtualView: 完成! 成功=$successCount, 失败=$failCount, 总计=${assembledShape.blocks.size}")
+        log.info("site=$siteId", "虚拟视图生成完成", "success" to successCount, "failed" to failCount, "total" to assembledShape.blocks.size)
 
         return successCount
     }
 
     fun removeAllForSite(siteId: UUID): Int {
-        Bukkit.getLogger().info("[DisplayEntityManager] removeAllForSite: 开始, siteId=$siteId")
+        log.info("site=$siteId", "开始移除展示实体")
         val displays = siteDisplays.remove(siteId)
 
         if (displays == null) {
-            Bukkit.getLogger().warning("[DisplayEntityManager] removeAllForSite: ⚠️ 未找到siteId=$siteId 的展示实体数据! 当前已注册的siteIds=${siteDisplays.keys}")
+            log.warn("site=$siteId", "未找到展示实体数据", "registeredSites" to siteDisplays.keys)
             return 0
         }
 
-        Bukkit.getLogger().info("[DisplayEntityManager] removeAllForSite: 找到 ${displays.size} 个展示实体")
+        log.debug("site=$siteId", "找到展示实体", "count" to displays.size)
 
         var removed = 0
         for (display in displays) {
@@ -251,14 +253,14 @@ object DisplayEntityManager {
                     display.remove()
                     removed++
                 } else {
-                    Bukkit.getLogger().info("[DisplayEntityManager] removeAllForSite: 实体已失效, 跳过")
+                    log.trace("site=$siteId", "实体已失效，跳过")
                 }
             } catch (e: Exception) {
-                Bukkit.getLogger().warning("[DisplayEntityManager] removeAllForSite: 删除实体失败: ${e.message}")
+                log.warn("site=$siteId", "删除实体失败", "error" to e.message)
             }
         }
 
-        Bukkit.getLogger().info("[DisplayEntityManager] removeAllForSite: 完成! 成功删除=$removed, 总数=${displays.size}")
+        log.info("site=$siteId", "移除完成", "removed" to removed, "total" to displays.size)
 
         return removed
     }

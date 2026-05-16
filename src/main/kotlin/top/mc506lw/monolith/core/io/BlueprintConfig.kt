@@ -6,6 +6,7 @@ import org.bukkit.NamespacedKey
 import org.bukkit.configuration.file.YamlConfiguration
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Blueprint
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.validation.predicate.*
 import java.io.File
 
@@ -37,7 +38,8 @@ data class BlueprintConfig(
 }
 
 object BlueprintConfigLoader {
-    
+    private val log = MonolithLogger.getLogger("BPConfig")
+
     fun load(file: File): BlueprintConfig? {
         if (!file.exists()) return null
         
@@ -88,7 +90,7 @@ object BlueprintConfigLoader {
 
         val displayOffsetRaw = config.getString("display_offset")
         val displayOffset = parsePosition(displayOffsetRaw)
-        Bukkit.getLogger().info("[BlueprintConfigLoader] display_offset: 原始值='$displayOffsetRaw', 解析结果=$displayOffset")
+        log.debug("config", "display_offset解析", "raw" to displayOffsetRaw, "result" to displayOffset)
 
         val scaffoldRotation = config.getInt("rotation.scaffold", 0)
         val assembledRotation = config.getInt("rotation.assembled", 0)
@@ -99,7 +101,7 @@ object BlueprintConfigLoader {
             val validRotations = setOf(0, 90, 180, 270)
             require(scaffoldRotation in validRotations) { "rotation.scaffold 必须是 0, 90, 180, 270 之一，当前值: $scaffoldRotation" }
             require(assembledRotation in validRotations) { "rotation.assembled 必须是 0, 90, 180, 270 之一，当前值: $assembledRotation" }
-            Bukkit.getLogger().info("[BlueprintConfigLoader] 检测到分阶段旋转配置: scaffold=$scaffoldRotation°, assembled=$assembledRotation°, center=$rotationCenter")
+            log.debug("config", "分阶段旋转配置", "scaffold" to scaffoldRotation, "assembled" to assembledRotation, "center" to rotationCenter)
         }
 
         return BlueprintConfig(

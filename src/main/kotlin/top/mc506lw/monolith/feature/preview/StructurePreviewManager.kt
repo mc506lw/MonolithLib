@@ -5,6 +5,7 @@ import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
 import top.mc506lw.monolith.common.I18n
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.transform.Facing
 import top.mc506lw.rebar.MonolithLib
@@ -12,10 +13,11 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 object StructurePreviewManager {
-    
+
     private val previewSessions = ConcurrentHashMap<UUID, PreviewSession>()
     private val sessionCreatedAt = ConcurrentHashMap<UUID, Long>()
     private val updateTasks = ConcurrentHashMap<UUID, BukkitTask>()
+    private val log = MonolithLogger.getLogger("Preview")
     
     val TIMEOUT_TICKS = 200L
     
@@ -30,10 +32,10 @@ object StructurePreviewManager {
         val assembledShape = blueprint.assembledShape
         if (assembledShape.blocks.isEmpty()) {
             player.sendMessage(I18n.Message.Preview.errEmptyStage(blueprint.id))
-            Bukkit.getLogger().warning("[Preview] 蓝图 ${blueprint.id} assembledShape 为空，blockCount=${blueprint.blockCount}")
+            log.warn("preview", "蓝图assembledShape为空", "blueprintId" to blueprint.id, "blockCount" to blueprint.blockCount)
             return null
         }
-        
+
         val session = PreviewSession(
             sessionId = "${player.uniqueId}-${System.currentTimeMillis()}",
             playerId = player.uniqueId,
@@ -43,39 +45,39 @@ object StructurePreviewManager {
             facing = facing,
             renderRadius = 64
         )
-        
-        Bukkit.getLogger().info("[Preview] 启动预览: blueprint=${blueprint.id}, scaffoldBlocks=${blueprint.scaffoldShape.blocks.size}, assembledBlocks=${blueprint.assembledShape.blocks.size}, ghosts=${session.ghostBlockCount}, radius=64, allLayers=true")
-        
+
+        log.info("player=${player.name}", "启动预览", "blueprintId" to blueprint.id, "scaffoldBlocks" to blueprint.scaffoldShape.blocks.size, "assembledBlocks" to blueprint.assembledShape.blocks.size, "ghosts" to session.ghostBlockCount)
+
         previewSessions[player.uniqueId] = session
         sessionCreatedAt[player.uniqueId] = System.currentTimeMillis()
         session.showAllLayers = true
         session.start()
-        
+
         startUpdateLoop(player, session)
-        
+
         return session
     }
-    
+
     private fun startUpdateLoop(player: Player, session: PreviewSession) {
-        Bukkit.getLogger().info("[Preview] 启动update循环: player=${player.name}, session=${session.sessionId}, isActive=${session.isActive}")
-        
+        log.debug("player=${player.name}", "启动update循环", "session" to session.sessionId, "isActive" to session.isActive)
+
         val task = Bukkit.getScheduler().runTaskTimer(MonolithLib.instance, Runnable {
             if (!session.isActive) {
-                Bukkit.getLogger().info("[Preview] update循环退出: session不再active")
+                log.debug("player=${player.name}", "update循环退出：session不再active")
                 updateTasks.remove(player.uniqueId)?.cancel()
                 return@Runnable
             }
-            
+
             checkTimeouts()
-            
+
             val p = Bukkit.getPlayer(player.uniqueId) ?: run {
-                Bukkit.getLogger().info("[Preview] update循环退出: 玩家离线")
+                log.debug("player=${player.name}", "update循环退出：玩家离线")
                 cancelPreview(player)
                 return@Runnable
             }
-            
+
             val result = session.update(p)
-            
+
             when (result) {
                 PreviewSession.UpdateResult.COMPLETED -> {
                     p.sendMessage(I18n.Message.Preview.buildFinished)
@@ -86,7 +88,7 @@ object StructurePreviewManager {
                     cancelPreview(p)
                 }
                 PreviewSession.UpdateResult.STOPPED -> {
-                    Bukkit.getLogger().info("[Preview] update返回STOPPED, 取消预览")
+                    log.debug("player=${player.name}", "update返回STOPPED，取消预览")
                     cancelPreview(p)
                 }
                 PreviewSession.UpdateResult.CONTINUE -> {

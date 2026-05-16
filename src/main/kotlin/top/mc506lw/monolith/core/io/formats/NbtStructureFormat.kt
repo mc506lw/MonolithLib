@@ -8,6 +8,7 @@ import top.mc506lw.monolith.core.io.StructureSerializer
 import top.mc506lw.monolith.core.io.getNbtCompound
 import top.mc506lw.monolith.core.io.getNbtInt
 import top.mc506lw.monolith.core.io.getNbtList
+import top.mc506lw.monolith.common.MonolithLogger
 import java.util.logging.Level
 import top.mc506lw.monolith.core.io.getNbtString
 import top.mc506lw.monolith.core.math.Vector3i
@@ -20,6 +21,7 @@ import java.io.*
 import java.util.zip.GZIPInputStream
 
 object NbtStructureFormat : StructureSerializer {
+    private val log = MonolithLogger.getLogger("NBTFmt")
     
     override val formatName: String = "NBT Structure"
     override val fileExtension: String = ".nbt"
@@ -52,18 +54,18 @@ object NbtStructureFormat : StructureSerializer {
         val dataInput = DataInputStream(gzipInput)
         
         val root = NbtReader(dataInput).readRoot()
-        Bukkit.getLogger().info("[MonolithLib] NbtStructureFormat 根标签: ${root.keys}")
-        
+        log.trace("load", "NBT根标签", "keys" to root.keys)
+
         val sizeList = root.getNbtList("size") ?: return Blueprint(
             id = "empty",
             stages = mapOf(BuildStage.SCAFFOLD to Shape(emptyList()), BuildStage.ASSEMBLED to Shape(emptyList())),
             meta = BlueprintMeta(displayName = "Empty")
         )
-        
+
         val blocksList = root.getNbtList("blocks") ?: emptyList()
         val paletteList = root.getNbtList("palette") ?: emptyList()
-        
-        Bukkit.getLogger().info("[MonolithLib] NbtStructureFormat: size=$sizeList, blocks=${blocksList.size}, palette=${paletteList.size}")
+
+        log.debug("load", "NBT结构信息", "size" to sizeList, "blocks" to blocksList.size, "palette" to paletteList.size)
         
         val sizeX = (sizeList.getOrNull(0) as? Number)?.toInt() ?: 1
         val sizeY = (sizeList.getOrNull(1) as? Number)?.toInt() ?: 1

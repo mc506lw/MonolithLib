@@ -10,6 +10,7 @@ import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataContainer
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.rebar.MonolithLib
 
 class VirtualDisplayAnchor(
@@ -25,6 +26,8 @@ class VirtualDisplayAnchor(
 
         const val ENTITY_PREFIX = "vde_"
         const val DISPLAY_GROUP_KEY = "display_group"
+
+        private val log = MonolithLogger.getLogger("VDA")
     }
 
     override var disableBlockTextureEntity = true
@@ -35,9 +38,9 @@ class VirtualDisplayAnchor(
     }
 
     override fun postLoad() {
-        org.bukkit.Bukkit.getLogger().info("[VirtualDisplayAnchor] postLoad: 检查展示实体恢复, ${blockLocationStr}")
+        log.debug("pos=$blockLocationStr", "检查展示实体恢复")
         if (!isHeldEntityPresent(DISPLAY_GROUP_KEY)) {
-            org.bukkit.Bukkit.getLogger().warning("[VirtualDisplayAnchor] postLoad: 展示实体组丢失, 需要重新生成")
+            log.warn("pos=$blockLocationStr", "展示实体组丢失，需要重新生成")
         }
     }
 

@@ -7,6 +7,7 @@ import org.bukkit.Sound
 import org.bukkit.World
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Shape
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.core.transform.BlockStateRotator
 import top.mc506lw.monolith.core.transform.CoordinateTransform
 import top.mc506lw.monolith.core.transform.Facing
@@ -15,6 +16,7 @@ import io.github.pylonmc.rebar.block.BlockStorage
 import java.util.concurrent.CompletableFuture
 
 object AutoFixer {
+    private val log = MonolithLogger.getLogger("AutoFix")
 
     private const val MAX_FIXES_PER_TICK = 500
 
@@ -27,7 +29,7 @@ object AutoFixer {
             worldLocation.blockZ
         )
 
-        Bukkit.getLogger().info("[AutoFixer] fixAssembledState: anchor=$worldLocation, facing=$facing, centerOffset=$centerOffset")
+        log.debug("fix", "修复成型状态", "anchor" to worldLocation, "facing" to facing, "centerOffset" to centerOffset)
 
         var fixedCount = 0
 

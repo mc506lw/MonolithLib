@@ -8,6 +8,7 @@ import top.mc506lw.monolith.core.io.StructureSerializer
 import top.mc506lw.monolith.core.io.getNbtCompound
 import top.mc506lw.monolith.core.io.getNbtInt
 import top.mc506lw.monolith.core.io.getNbtList
+import top.mc506lw.monolith.common.MonolithLogger
 import java.util.logging.Level
 import top.mc506lw.monolith.core.io.getNbtLongArray
 import top.mc506lw.monolith.core.io.getNbtString
@@ -21,6 +22,7 @@ import java.io.*
 import java.util.zip.GZIPInputStream
 
 object LitematicFormat : StructureSerializer {
+    private val log = MonolithLogger.getLogger("LiteFmt")
     
     override val formatName: String = "Litematica"
     override val fileExtension: String = ".litematic"
@@ -53,43 +55,43 @@ object LitematicFormat : StructureSerializer {
         val dataInput = DataInputStream(gzipInput)
         
         val root = NbtReader(dataInput).readRoot()
-        Bukkit.getLogger().info("[MonolithLib] LitematicFormat 根标签: ${root.keys}")
-        
+        log.trace("load", "Litematic根标签", "keys" to root.keys)
+
         val metadata = root.getNbtCompound("Metadata") ?: emptyMap()
         val schematicName = metadata.getNbtString("Name") ?: "unnamed"
-        
+
         val finalId = blueprintId ?: schematicName
-        
+
         val regions = root.getNbtCompound("Regions") ?: emptyMap()
-        Bukkit.getLogger().info("[MonolithLib] LitematicFormat: name=$schematicName, regions=${regions.keys}")
-        
+        log.debug("load", "Litematic区域信息", "name" to schematicName, "regions" to regions.keys)
+
         val allBlocks = mutableListOf<BlockEntry>()
-        
+
         var minX = Int.MAX_VALUE
         var minY = Int.MAX_VALUE
         var minZ = Int.MAX_VALUE
         var maxX = Int.MIN_VALUE
         var maxY = Int.MIN_VALUE
         var maxZ = Int.MIN_VALUE
-        
+
         for ((regionName, regionValue) in regions) {
             val region = (regionValue as? NbtCompound)?.value ?: continue
-            Bukkit.getLogger().info("[MonolithLib] LitematicFormat 区域 '$regionName' keys: ${region.keys}")
-            
+            log.trace("load", "Litematic区域详情", "region" to regionName, "keys" to region.keys)
+
             val position = region.getNbtCompound("Position") ?: continue
             val size = region.getNbtCompound("Size") ?: continue
             val blockStates = region.getNbtLongArray("BlockStates") ?: continue
             val paletteList = region.getNbtList("BlockStatePalette") ?: continue
-            
+
             var posX = position.getNbtInt("x") ?: 0
             var posY = position.getNbtInt("y") ?: 0
             var posZ = position.getNbtInt("z") ?: 0
-            
+
             var sizeX = size.getNbtInt("x") ?: 1
             var sizeY = size.getNbtInt("y") ?: 1
             var sizeZ = size.getNbtInt("z") ?: 1
-            
-            Bukkit.getLogger().info("[MonolithLib] LitematicFormat 区域 '$regionName': pos=($posX,$posY,$posZ), size=($sizeX,$sizeY,$sizeZ), palette=${paletteList.size}, blockStates=${blockStates.size}")
+
+            log.debug("load", "Litematic区域尺寸", "region" to regionName, "pos" to "($posX,$posY,$posZ)", "size" to "($sizeX,$sizeY,$sizeZ)", "palette" to paletteList.size, "blockStates" to blockStates.size)
             
             if (sizeX < 0) {
                 posX += sizeX + 1

@@ -13,6 +13,7 @@ import org.bukkit.util.Transformation
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import top.mc506lw.monolith.feature.virtual.VirtualDisplayAnchor
+import top.mc506lw.monolith.common.MonolithLogger
 
 class DisplayEntityGroup(
     private val anchor: RebarEntityHolderBlock,
@@ -24,11 +25,12 @@ class DisplayEntityGroup(
     private var rootEntity: Entity? = null
     private val childEntities = mutableListOf<Entity>()
     private var centerLoc: Location = centerLocation
+    private val logger = MonolithLogger.getLogger("DEG")
 
     init {
         transformSystem.setPlacementYaw(initialYaw)
         createRootEntity(centerLocation)
-        Bukkit.getLogger().info("[DisplayEntityGroup] 初始化完成, 初始yaw=${transformSystem.placementYaw}°")
+        logger.debug("group", "展示实体组初始化", "initialYaw" to String.format("%.1f", initialYaw))
     }
 
     val location: Location get() = rootEntity?.location ?: centerLoc
@@ -87,8 +89,8 @@ class DisplayEntityGroup(
 
         applyTransformationToEntity(entityIndex, display)
 
-        if (entityIndex < 5) {
-            logEntityInfo(name, blueprintTransform, entityIndex)
+        if (entityIndex == 0) {
+            logger.trace("group", "添加展示实体", "name" to name, "index" to entityIndex, "trans" to blueprintTransform.translation, "rot" to blueprintTransform.rotation)
         }
 
         return display
@@ -98,7 +100,7 @@ class DisplayEntityGroup(
         val oldYaw = transformSystem.placementYaw
         transformSystem.setPlacementYaw(newYaw)
 
-        Bukkit.getLogger().info("[DisplayEntityGroup] setYaw: $oldYaw° → $newYaw°")
+        logger.debug("group", "朝向变更", "oldYaw" to String.format("%.1f", oldYaw), "newYaw" to String.format("%.1f", newYaw))
 
         updateRootEntityTransformation()
         applyAllTransformations()
@@ -172,25 +174,12 @@ class DisplayEntityGroup(
                 } catch (_: Exception) {}
             }
 
-            if (entityIndex < 5) {
-                logAppliedTransform(entityIndex, finalTransform)
+            if (entityIndex == 0) {
+                logger.trace("group", "实体变换应用", "index" to entityIndex, "trans" to finalTransform.translation, "rot" to finalTransform.rotation)
             }
         } catch (e: Exception) {
-            Bukkit.getLogger().warning("[DisplayEntityGroup] 应用变换到实体[$entityIndex]失败: ${e.message}")
+            logger.warn("group", "变换应用失败", "index" to entityIndex, "error" to e.message)
         }
-    }
-
-    private fun logEntityInfo(name: String, blueprint: DisplayEntityTransform, index: Int) {
-        Bukkit.getLogger().info("[DisplayEntityGroup] 添加实体[$name](#$index):")
-        Bukkit.getLogger().info("  蓝图translation: (${blueprint.translation.x}, ${blueprint.translation.y}, ${blueprint.translation.z})")
-        Bukkit.getLogger().info("  蓝图rotation: (${blueprint.rotation.x}, ${blueprint.rotation.y}, ${blueprint.rotation.z}, ${blueprint.rotation.w})")
-        Bukkit.getLogger().info("  当前组yaw: ${transformSystem.placementYaw}°")
-    }
-
-    private fun logAppliedTransform(index: Int, final: DisplayEntityTransform) {
-        Bukkit.getLogger().info("[DisplayEntityGroup] 实体[$index] 最终变换:")
-        Bukkit.getLogger().info("  最终translation: (${final.translation.x}, ${final.translation.y}, ${final.translation.z})")
-        Bukkit.getLogger().info("  最终rotation: (${final.rotation.x}, ${final.rotation.y}, ${final.rotation.z}, ${final.rotation.w})")
     }
 
     companion object {

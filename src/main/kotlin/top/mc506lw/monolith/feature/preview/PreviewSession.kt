@@ -14,6 +14,7 @@ import org.joml.Vector3f
 import top.mc506lw.monolith.core.math.Vector3i
 import top.mc506lw.monolith.core.model.Blueprint
 import top.mc506lw.monolith.core.model.Shape
+import top.mc506lw.monolith.common.MonolithLogger
 import top.mc506lw.monolith.validation.predicate.Predicate
 import top.mc506lw.monolith.validation.predicate.Predicates
 import top.mc506lw.monolith.validation.predicate.RotatedPredicate
@@ -47,6 +48,7 @@ class PreviewSession(
     private val _transform: CoordinateTransform,
     private val renderRadius: Int = 7
 ) {
+    private val log = MonolithLogger.getLogger("PSession")
     constructor(
         sessionId: String,
         playerId: UUID,
@@ -153,43 +155,43 @@ class PreviewSession(
     fun update(player: Player): UpdateResult {
         if (!isActive || isComplete || isCancelled) {
             if (displayEntities.isEmpty() && ghostBlocks.isNotEmpty()) {
-                org.bukkit.Bukkit.getLogger().warning("[Preview] update退出(STOPPED): isActive=$isActive, isComplete=$isComplete, isCancelled=$isCancelled, ghosts=${ghostBlocks.size}")
+                log.warn("session=$sessionId", "update退出(STOPPED)", "isActive" to isActive, "isComplete" to isComplete, "isCancelled" to isCancelled, "ghosts" to ghostBlocks.size)
             }
             return UpdateResult.STOPPED
         }
-        
+
         val world = controllerLocation.world
         if (world == null || player.world != world) {
             if (displayEntities.isEmpty()) {
-                org.bukkit.Bukkit.getLogger().warning("[Preview] world不匹配: controllerWorld=${controllerLocation?.world?.name}, playerWorld=${player.world.name}, controllerLoc=$controllerLocation")
+                log.warn("session=$sessionId", "world不匹配", "controllerWorld" to controllerLocation?.world?.name, "playerWorld" to player.world.name)
             }
             return UpdateResult.CONTINUE
         }
-        
+
         val playerLoc = player.location
         val playerBlockX = playerLoc.blockX
         val playerBlockY = playerLoc.blockY
         val playerBlockZ = playerLoc.blockZ
-        
+
         val radiusSq = renderRadius * renderRadius
-        
+
         val visiblePositions = mutableSetOf<Vector3i>()
-        
+
         for (ghost in ghostBlocks) {
             if (!showAllLayers && ghost.worldPos.y != currentLayer) continue
-            
+
             val dx = ghost.worldPos.x - playerBlockX
             val dy = ghost.worldPos.y - playerBlockY
             val dz = ghost.worldPos.z - playerBlockZ
             val distSq = dx * dx + dy * dy + dz * dz
-            
+
             if (distSq <= radiusSq) {
                 visiblePositions.add(ghost.worldPos)
                 val block = world.getBlockAt(ghost.worldPos.x, ghost.worldPos.y, ghost.worldPos.z)
                 updateGhostBlock(ghost, block)
             }
         }
-        
+
         updateTick++
         if (updateTick <= 3) {
             val sampleGhost = ghostBlocks.firstOrNull()
@@ -199,10 +201,10 @@ class PreviewSession(
                 val ddz = (it.worldPos.z - playerBlockZ).toDouble()
                 kotlin.math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz)
             }
-            org.bukkit.Bukkit.getLogger().info("[Preview] tick#$updateTick: player=($playerBlockX,$playerBlockY,$playerBlockZ), controller=${controllerLocation.blockX},${controllerLocation.blockY},${controllerLocation.blockZ}, visible=${visiblePositions.size}/${ghostBlocks.size}, entities=${displayEntities.size}, nearestGhostDist=$sampleDist")
-            
+            log.trace("session=$sessionId", "tick信息", "tick" to updateTick, "player" to "($playerBlockX,$playerBlockY,$playerBlockZ)", "controller" to controllerLocation.block, "visible" to visiblePositions.size, "totalGhosts" to ghostBlocks.size, "entities" to displayEntities.size, "nearestDist" to String.format("%.1f", sampleDist ?: 0.0))
+
             if (visiblePositions.isNotEmpty() && displayEntities.size < visiblePositions.size) {
-                org.bukkit.Bukkit.getLogger().warning("[Preview] tick#$updateTick: 有${visiblePositions.size}个可见位置但只有${displayEntities.size}个实体! 部分spawn可能失败")
+                log.warn("session=$sessionId", "部分spawn可能失败", "visible" to visiblePositions.size, "entities" to displayEntities.size)
             }
         }
         
@@ -275,13 +277,13 @@ class PreviewSession(
             
             spawnCount++
             if (spawnCount <= 3) {
-                org.bukkit.Bukkit.getLogger().info("[Preview] spawn#$spawnCount: pos=${ghost.worldPos}, block=${ghost.previewBlockData.material}, valid=${display.isValid}, entityID=${display.entityId}")
+                log.trace("session=$sessionId", "spawn实体", "count" to spawnCount, "pos" to ghost.worldPos, "block" to ghost.previewBlockData.material, "valid" to display.isValid, "entityId" to display.entityId)
             }
-            
+
             displayEntities[ghost.worldPos] = display
             display
         } catch (e: Exception) {
-            org.bukkit.Bukkit.getLogger().warning("[Preview] 生成BlockDisplay失败: pos=${ghost.worldPos}, error=${e.javaClass.simpleName}: ${e.message}")
+            log.warn("session=$sessionId", "生成BlockDisplay失败", "pos" to ghost.worldPos, "error" to e.javaClass.simpleName, "message" to e.message)
             null
         }
     }

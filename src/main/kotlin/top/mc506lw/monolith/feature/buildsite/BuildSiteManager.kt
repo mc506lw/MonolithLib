@@ -55,7 +55,7 @@ object BuildSiteManager {
 
         val world = anchorLocation.world ?: return null
         if (!world.isChunkLoaded(anchorLocation.blockX shr 4, anchorLocation.blockZ shr 4)) {
-            Bukkit.getLogger().warning("[BuildSiteManager] 目标位置区块未加载，无法创建工地")
+            logger.warn("create", "区块未加载，无法创建工地", "pos" to anchorLocation.blockX.toString() + "," + anchorLocation.blockY + "," + anchorLocation.blockZ)
             return null
         }
 
@@ -69,7 +69,7 @@ object BuildSiteManager {
         for (existingSite in getAllActiveSites()) {
             if (existingSite.anchorLocation.world?.name != world.name) continue
             if (boxesOverlap(tempSite, existingSite)) {
-                Bukkit.getLogger().info("[BuildSiteManager] 新工地与现有工地 ${existingSite.blueprintId} 重叠")
+                logger.info("create", "工地位置重叠", "newBlueprint" to blueprint.id, "existingSite" to existingSite.blueprintId)
                 return null
             }
         }
@@ -363,9 +363,9 @@ object BuildSiteManager {
         registerSite(site)
 
         if (restoredState == BuildSiteState.VIRTUAL && isCompleted) {
-            Bukkit.getLogger().info("[BuildSiteManager] 恢复已完成VIRTUAL工地: $idStr, backupData=${site.backupData.size}条")
+            logger.info("restore", "恢复已完成VIRTUAL工地", "siteId" to idStr, "backupSize" to site.backupData.size)
         } else if (restoredState == BuildSiteState.VIRTUAL) {
-            Bukkit.getLogger().info("[BuildSiteManager] 恢复VIRTUAL工地: $idStr, Rebar Anchor postLoad将自动恢复展示实体")
+            logger.info("restore", "恢复VIRTUAL工地", "siteId" to idStr)
         }
     }
     
